@@ -147,6 +147,7 @@ public class XBleServer extends Service {
                 //开始搜索
                 case SCAN_BLE_DEVICE:
                     //一直搜索
+                    stopScan();
                     scanLeDevice(mTimeOut, mScanUUID);
                     break;
                 //重置扫描
@@ -162,6 +163,10 @@ public class XBleServer extends Service {
                             mCallback.onScanTimeOut();
                         }
                         stopScan();//停止搜索
+                    } else if (timeOut == 0) {
+                        //代表一直搜索,由于系统限制,一直搜索的时候需要每隔20分钟重启一次,避免出现异常
+                        mHandler.removeMessages(SCAN_BLE_DEVICE);
+                        mHandler.sendEmptyMessageDelayed(SCAN_BLE_DEVICE, 20 * 60 * 1000);
                     }
                     break;
 
@@ -564,24 +569,22 @@ public class XBleServer extends Service {
      *
      * @param mBle 数据
      */
-    private void saveScanData(final BleValueBean mBle) {
+    private synchronized void saveScanData(final BleValueBean mBle) {
         boolean isMeBle = true;
         if (mOnScanFilterListener != null) {
             //过滤,是否是
             isMeBle = mOnScanFilterListener.onFilter(mBle);
         }
         if (isMeBle) {
-            if (mOnScanFilterListener != null) {
-                //广播数据
-                mOnScanFilterListener.onScanRecord(mBle);
-            }
-            synchronized (this) {
-                runOnMainThread(() -> {
-                    if (mCallback != null) {
-                        mCallback.onScanning(mBle);
-                    }
-                });
-            }
+            runOnMainThread(() -> {
+                if (mOnScanFilterListener != null) {
+                    //广播数据
+                    mOnScanFilterListener.onScanRecord(mBle);
+                }
+                if (mCallback != null) {
+                    mCallback.onScanning(mBle);
+                }
+            });
         }
     }
 
@@ -800,12 +803,11 @@ public class XBleServer extends Service {
                     discoverServicesTime = 0;
                     mHandler.removeMessages(CONNECT_BLE_TIMEOUT);
                     mHandler.removeMessages(GET_BLE_SERVICE);
-                    mHandler.removeMessages(SCAN_BLE_DEVICE);
                     if (mServices.size() > 0) {
                         //获取的服务列表不为空
                         String mac = gatt.getDevice().getAddress().toUpperCase();
                         synchronized (mBleObjectMap) {
-                            if ( mBleObjectMap.containsKey(mac)) {
+                            if (mBleObjectMap.containsKey(mac)) {
                                 BleLog.i(TAG, "标签中已包含");
                                 BleDevice mConnectBleObject = mBleObjectMap.get(mac);
                                 if (mConnectBleObject != null) {

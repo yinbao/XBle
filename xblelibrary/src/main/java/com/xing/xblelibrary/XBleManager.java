@@ -53,7 +53,7 @@ public class XBleManager {
 
     public void init(Context context, onInitListener listener) {
         mContext = context;
-        mOnInitListener = listener;
+        setOnInitListener(listener);
         startService();
     }
 
@@ -75,10 +75,20 @@ public class XBleManager {
 
     }
 
+    public void setOnInitListener(onInitListener onInitListener) {
+        mOnInitListener = onInitListener;
+        if (mXBleServer!=null){
+            if (mOnInitListener!=null){
+                mOnInitListener.onInitSuccess();
+            }
+        }
+
+    }
+
     public interface onInitListener {
         void onInitSuccess();
 
-        void onInitFailure();
+        default void onInitFailure(){}
     }
 
     private void startService() {
