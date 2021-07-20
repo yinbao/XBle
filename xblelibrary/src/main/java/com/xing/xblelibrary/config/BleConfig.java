@@ -35,11 +35,6 @@ public class BleConfig {
      */
     public static UUID UUID_NOTIFY_DESCRIPTOR = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
 
-    /**
-     * 加密的时间版本判断
-     */
-    public final static int ENCRYPTION_TIME = 20190813;
-
 
     /**
      * 1=已经在搜索了(如果没有回调,可能是权限问题)

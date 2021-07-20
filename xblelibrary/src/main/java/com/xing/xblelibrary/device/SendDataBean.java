@@ -15,7 +15,6 @@ import java.util.UUID;
  * Because there is a send queue, it is recommended not to reuse the current object
  */
 public class SendDataBean {
-    //byte[] hex, UUID uuid, int type, UUID uuidService
     /**
      * 发送的内容
      */

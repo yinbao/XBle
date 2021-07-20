@@ -110,7 +110,7 @@ public final class BleDevice {
 
 
     public void readRssi() {
-        sendDataOta(new SendDataBean(null, null, BleConfig.RSSI_DATA, null));
+        sendDataNow(new SendDataBean(null, null, BleConfig.RSSI_DATA, null));
     }
 
 
@@ -231,7 +231,7 @@ public final class BleDevice {
     /**
      * 返回的Mtu
      *
-     * @param mtu
+     * @param mtu 实际支持的最大字节数
      */
     @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
     public boolean setMtu(int mtu) {
@@ -316,21 +316,9 @@ public final class BleDevice {
             mHandler.removeMessages(SEND_DATA_KEY);
             mHandler.sendEmptyMessageDelayed(SEND_DATA_KEY, mSendDataInterval / 2);
         }
-
-
     }
 
-    /**
-     * 发送数据
-     *
-     * @param sendDataBean SendDataBean
-     */
-    public synchronized void sendDataOta(SendDataBean sendDataBean) {
-        if (sendDataBean == null)
-            return;
-        byte[] hex = sendDataBean.getHex();
-        sendCmd(hex, sendDataBean.getUuid(), sendDataBean.getType(), sendDataBean.getUuidService());
-    }
+
 
     /**
      * 马上发送数据,需要握手成功

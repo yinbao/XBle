@@ -287,11 +287,11 @@ public class XBleManager {
     /**
      * 设置扫描连接的接口
      *
-     * @param callback OnCallbackBle
+     * @param listener OnCallbackBle
      */
-    public void setOnBleScanConnectListener(OnBleScanConnectListener callback) {
+    public void setOnBleScanConnectListener(OnBleScanConnectListener listener) {
         if (checkBluetoothServiceStatus()) {
-            mXBleServer.setOnBleScanConnectListener(callback);
+            mXBleServer.setOnBleScanConnectListener(listener);
         }
     }
 

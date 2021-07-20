@@ -70,7 +70,6 @@
 > 初始化
 
 ```
-
  XBleManager.getInstance().init(getApplication(), new onInitListener() {
             @Override
             public void onInitSuccess() {
@@ -85,13 +84,13 @@
 
 ```
 
--  设置接口XBleManager.getInstance().setOnCallbackBle();实现OnCallbackBle接口可以获取搜索,连接,断开等状态和数据
+-  设置接口XBleManager.getInstance().setOnBleScanConnectListener();实现OnBleScanConnectListener接口可以获取搜索,连接,断开等状态以及数据
 
 ```
 /**
  * 蓝牙搜索,连接等操作接口
  */
-public interface OnCallbackBle extends OnCallback {
+public interface OnBleScanConnectListener extends OnBleConnectListener {
     /**
      * 开始扫描设备
      */
@@ -104,13 +103,13 @@ public interface OnCallbackBle extends OnCallback {
      * 扫描超时(完成)
      */
    default void onScanTimeOut(){}
-   
+
      /**
      * 扫描异常
      * @param time 多少ms后才可以再次进行扫描
      */
     default void onScanErr(long time){}
-   
+
     /**
      * 正在连接
      */
@@ -137,6 +136,16 @@ public interface OnCallbackBle extends OnCallback {
 }
 ```
 
+-  设置/取消/清空 观察者形式监听BLE连接断连状态:
+
+```
+
+设置:XBleManager.getInstance().addBleConnectListener(OnBleConnectListener);
+取消:XBleManager.getInstance().removeBleConnectListener(OnBleConnectListener);
+清空:XBleManager.getInstance().removeAllBleConnectListener();
+
+```
+
 -  搜索  XBleManager.getInstance().startScan(long timeOut);//timeOut(毫秒)
 
 ```
@@ -161,11 +170,11 @@ public interface OnCallbackBle extends OnCallback {
 	搜索到的设备
 	会在OnCallbackBle接口中的onScanning(BleValueBean data)返回
 	或者
-	在OnScanFilterListener接口中的onScanRecord(BleValueBean bleValueBean)返回
+	在OnScanFilterListener接口中的onScanBleInfo(BleValueBean bleValueBean)返回
 
 ```
 
--  连接XBleManager.getInstance().connectDevice(BleValueBean bleValueBean);或者connectDevice(String mAddress); 
+-  连接XBleManager.getInstance().connectDevice(BleValueBean bleValueBean);或者connectDevice(String mAddress);
 
 ```
 注:连接之前建议停止搜索XBleManager.getInstance().stopScan(),这样连接过程会更稳定
@@ -178,6 +187,20 @@ public interface OnCallbackBle extends OnCallback {
 XBleManager.getInstance().disconnectAll();断开所有连接
 XBleManager对象只提供断开所有设备的方法,断开某个设备可用BleDevice.disconnect();方法断开连接
 XBleManager.getInstance().getBleDevice(String mac);可以获取BleDevice对象
+```
+
+-  监听系统连接的BLE,可用于第三方APP连接BLE后,自己的APP可以获取到连接对象,进行读写操作(可以绕过BLE的握手校验等操作).监听连接成功后会在OnBleScanConnectListener接口返回结果
+
+```
+
+    /**
+     * 设备监听,监听指定的mac地址的设备,发现连接成功后马上连接获取操作的对象
+     *
+     * @param mAddress 设备地址,null或者空字符串可以监听所有的地址
+     * @param status   是否开启监听
+     */
+XBleManager.getInstance().deviceConnectListener(String mAddress, boolean status);
+
 ```
 
 -  获取连接的设备对象
@@ -246,7 +269,7 @@ public interface OnScanFilterListener {
      * @param bleValueBean 蓝牙广播数据
      * @return 是否有效
      */
-    default boolean onFilter(BleValueBean bleValueBean) {
+    default boolean onBleFilter(BleValueBean bleValueBean) {
         return true;
     }
 
@@ -255,7 +278,7 @@ public interface OnScanFilterListener {
      *
      * @param bleValueBean 搜索到的设备信息
      */
-    default void onScanRecord(BleValueBean bleValueBean) {
+    default void onScanBleInfo(BleValueBean bleValueBean) {
     }
 
 }
@@ -302,3 +325,120 @@ public interface OnCharacteristicListener {
 }
 
 ```
+
+###BleDevice对象介绍
+
+- BleDevice是当前连接的对象,可以进行读写通知等操作,BleDevice对象可以在连接成功后通过XBleManager.getInstance().getBleDevice(mac);获取;BleDevice中的相关方法介绍
+
+```
+
+readRssi();//可以获取当前的信号值,从OnBleRssiListener接口返回,需要手动设置监听BleDevice.setOnBleRssiListener
+
+
+setNotify(UUID uuidService, UUID... uuidNotify);//可以设置一个Service下面的多个Notify,跟在后面即可,当有多个Service需要设置的时候多写几个setNotify即可.
+如果需要监听Notify结果,可以实现OnCharacteristicListener接口中的onDescriptorWriteOK方法
+
+setCloseNotify可以关闭相关Notify
+
+disconnect();//断开当前连接
+disconnect(boolean notice);//notice 断开后是否需要系统回调通知
+
+
+
+```
+
+- BleDevice中的setConnectPriority();可以设置连接参数,修改BLE的交互速率(需要硬件支持);android 5.0以上才支持
+
+```
+
+    /**
+     * 设置连接参数
+     *
+     * @param connectionPriority 参数
+	 * {@link BluetoothGatt.CONNECTION_PRIORITY_BALANCED}默认
+     * {@link BluetoothGatt.CONNECTION_PRIORITY_HIGH}高功率,提高传输速度
+     * {@link BluetoothGatt.CONNECTION_PRIORITY_LOW_POWER}低功率,传输速度减慢,更省电
+     * @return 结果
+     */
+    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+    public boolean setConnectPriority(int connectionPriority) {
+        if (mBluetoothGatt != null) {
+            return mBluetoothGatt.requestConnectionPriority(connectionPriority);
+        }
+        return false;
+    }
+
+```
+
+- BleDevice中的setMtu();可以设置发送的最大字节数,理论值23~517(需要硬件支持);android 5.0以上才支持
+
+```
+
+    /**
+     * 返回的Mtu
+     *
+     * @param mtu 实际支持的最大字节数
+     */
+    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+    public boolean setMtu(int mtu) {
+        if (mBluetoothGatt != null) {
+            return mBluetoothGatt.requestMtu(mtu);
+        }
+        return false;
+    }
+
+
+```
+
+
+- BleDevice中的sendData(SendDataBean);发送数据,内置发送队列;大部分BLE都是有接收间隔的,发送太快可能会导致BLE接收异常.
+- 某些情况下不需要发送队列,可以调用BleDevice中的sendDataNow(SendDataBean);立刻发送数据
+- BleDevice中的setSendDataInterval(int interval);可以设置发送队列的间隔,参数是毫秒(ms)
+
+```
+
+    /**
+     * 修改发送队列的间隔
+     * 默认是200ms
+     *
+     * @param interval 单位(ms)
+     */
+    public void setSendDataInterval(int interval) {
+        mSendDataInterval = interval;
+    }
+
+public class SendDataBean {
+    /**
+     * 发送的内容
+     */
+    private byte[] hex;
+    /**
+     * 需要操作的特征uuid
+     */
+    private UUID uuid;
+    /**
+     * 操作类型(
+	 * BleConfig.READ_DATA=读,
+	 * BleConfig.WRITE_DATA=写,
+	 * BleConfig.RSSI_DATA=信号强度)
+     */
+    private int type;
+
+    /**
+     * 消息是否需要置顶发送,默认false
+     */
+    private boolean mTop = false;
+    /**
+     * 服务的uuid
+     */
+    private UUID uuidService = null;
+}
+
+```
+
+
+- BleDevice中的getBluetoothGatt();可以拿到当前连接的GATT
+- BleDevice中的getMac();可以拿到当前连接的mac地址
+- BleDevice中的getName();可以拿到当前连接的设备名称
+
+
