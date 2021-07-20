@@ -8,7 +8,7 @@ import com.xing.xblelibrary.bean.BleValueBean;
  * 2019/3/6<br>
  * 搜索过滤接口
  */
-public interface OnScanFilterListener {
+public interface OnBleScanFilterListener {
 
     /**
      * 过滤计算->可以对广播数据进行帅选过滤
@@ -16,7 +16,7 @@ public interface OnScanFilterListener {
      * @param bleValueBean 蓝牙广播数据
      * @return 是否有效
      */
-    default boolean onFilter(BleValueBean bleValueBean) {
+    default boolean onBleFilter(BleValueBean bleValueBean) {
         return true;
     }
 
@@ -25,7 +25,7 @@ public interface OnScanFilterListener {
      *
      * @param bleValueBean 搜索到的设备信息
      */
-    default void onScanRecord(BleValueBean bleValueBean) {
+    default void onScanBleInfo(BleValueBean bleValueBean) {
     }
 
 }

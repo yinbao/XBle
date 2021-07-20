@@ -6,7 +6,7 @@ import com.xing.xblelibrary.bean.BleValueBean;
 /**
  * 蓝牙搜索,连接等操作接口
  */
-public interface OnBleScanConnectCallback extends OnBleConnectCallback {
+public interface OnBleScanConnectListener extends OnBleConnectListener {
 
     /**
      * 开始扫描设备

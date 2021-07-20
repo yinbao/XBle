@@ -36,9 +36,10 @@ import android.text.TextUtils;
 
 import com.xing.xblelibrary.bean.BleValueBean;
 import com.xing.xblelibrary.device.BleDevice;
-import com.xing.xblelibrary.listener.CallbackDisIm;
-import com.xing.xblelibrary.listener.OnBleScanConnectCallback;
-import com.xing.xblelibrary.listener.OnScanFilterListener;
+import com.xing.xblelibrary.listener.BleConnectListenerIm;
+import com.xing.xblelibrary.listener.OnBleScanConnectListener;
+import com.xing.xblelibrary.listener.OnBleScanFilterListener;
+import com.xing.xblelibrary.listener.OnBleStatusListener;
 import com.xing.xblelibrary.utils.BleLog;
 import com.xing.xblelibrary.utils.MyBleDeviceUtils;
 
@@ -99,7 +100,14 @@ public class XBleServer extends Service {
      */
     private BluetoothManager mBleManager;
     private BluetoothAdapter mBluetoothAdapter;
-
+    /**
+     * 连接接口回调
+     */
+    private OnBleScanConnectListener mBleScanConnectListener = null;
+    /**
+     * 蓝牙状态接口
+     */
+    private OnBleStatusListener mOnBleStatusListener = null;
     /**
      * 是否为扫描状态
      */
@@ -159,8 +167,8 @@ public class XBleServer extends Service {
                 case STOP_BLE_DEVICE:
                     int timeOut = msg.arg1;
                     if (timeOut > 0) {
-                        if (mCallback != null) {
-                            mCallback.onScanTimeOut();
+                        if (mBleScanConnectListener != null) {
+                            mBleScanConnectListener.onScanTimeOut();
                         }
                         stopScan();//停止搜索
                     } else if (timeOut == 0) {
@@ -194,10 +202,10 @@ public class XBleServer extends Service {
                         mConnectGatt = null;
                         gattOld = null;
                         runOnMainThread(() -> {
-                            if (mCallback != null) {
-                                mCallback.onDisConnected(address, -1);
+                            if (mBleScanConnectListener != null) {
+                                mBleScanConnectListener.onDisConnected(address, -1);
                             }
-                            CallbackDisIm.getInstance().onDisConnected(mCallback, address, -1);
+                            BleConnectListenerIm.getInstance().onDisConnected(mBleScanConnectListener, address, -1);
                         });
                     } else {
                         BleLog.e(TAG, "蓝牙连接超时:mConnectGatt=null");
@@ -330,7 +338,7 @@ public class XBleServer extends Service {
 
     //------------------------搜索设备-----------------------------------
 
-    private OnScanFilterListener mOnScanFilterListener;
+    private OnBleScanFilterListener mOnScanFilterListener;
     /**
      * 给指定的uuid设置cid,vid,pid
      */
@@ -341,7 +349,7 @@ public class XBleServer extends Service {
      *
      * @param onScanFilterListener OnScanFilterListener
      */
-    public void setOnScanFilterListener(OnScanFilterListener onScanFilterListener) {
+    public void setOnScanFilterListener(OnBleScanFilterListener onScanFilterListener) {
         mOnScanFilterListener = onScanFilterListener;
     }
 
@@ -373,8 +381,8 @@ public class XBleServer extends Service {
             message.arg1 = (int) timeOut;
             mHandler.sendMessageDelayed(message, timeOut);
             runOnMainThread(() -> {
-                if (mCallback != null) {
-                    mCallback.onStartScan();
+                if (mBleScanConnectListener != null) {
+                    mBleScanConnectListener.onStartScan();
                 }
             });
             return;
@@ -394,8 +402,8 @@ public class XBleServer extends Service {
             long timeMillis = System.currentTimeMillis();
             long l = 30100 - (timeMillis - mFirstScanTime);
             runOnMainThread(() -> {
-                if (mCallback != null) {
-                    mCallback.onScanErr(l);
+                if (mBleScanConnectListener != null) {
+                    mBleScanConnectListener.onScanErr(l);
                 }
             });
             return;
@@ -421,8 +429,8 @@ public class XBleServer extends Service {
             mScanStatus = true;
 
             runOnMainThread(() -> {
-                if (mCallback != null) {
-                    mCallback.onStartScan();
+                if (mBleScanConnectListener != null) {
+                    mBleScanConnectListener.onStartScan();
                 }
             });
 
@@ -539,8 +547,8 @@ public class XBleServer extends Service {
         public void onBatchScanResults(List<ScanResult> results) {
             super.onBatchScanResults(results);
             mScanErr = 0;
-            if (mCallback != null) {
-                mCallback.onScanTimeOut();
+            if (mBleScanConnectListener != null) {
+                mBleScanConnectListener.onScanTimeOut();
             }
 
         }
@@ -573,16 +581,16 @@ public class XBleServer extends Service {
         boolean isMeBle = true;
         if (mOnScanFilterListener != null) {
             //过滤,是否是
-            isMeBle = mOnScanFilterListener.onFilter(mBle);
+            isMeBle = mOnScanFilterListener.onBleFilter(mBle);
         }
         if (isMeBle) {
             runOnMainThread(() -> {
                 if (mOnScanFilterListener != null) {
                     //广播数据
-                    mOnScanFilterListener.onScanRecord(mBle);
+                    mOnScanFilterListener.onScanBleInfo(mBle);
                 }
-                if (mCallback != null) {
-                    mCallback.onScanning(mBle);
+                if (mBleScanConnectListener != null) {
+                    mBleScanConnectListener.onScanning(mBle);
                 }
             });
         }
@@ -675,10 +683,10 @@ public class XBleServer extends Service {
         }
         mConnectGatt = device.connectGatt(mBluMainService, false, mGattCallback);//连接操作
         runOnMainThread(() -> {
-            if (mCallback != null) {
-                mCallback.onConnecting(mAddress);
+            if (mBleScanConnectListener != null) {
+                mBleScanConnectListener.onConnecting(mAddress);
             }
-            CallbackDisIm.getInstance().onConnecting(mCallback, mAddress);
+            BleConnectListenerIm.getInstance().onConnecting(mBleScanConnectListener, mAddress);
         });
 
         BleLog.i(TAG, "开始连接:" + mConnectGatt);
@@ -748,10 +756,10 @@ public class XBleServer extends Service {
                         runOnMainThread(() -> {
                             String mac = gatt.getDevice().getAddress();
 
-                            if (mCallback != null) {
-                                mCallback.onConnectionSuccess(mac);
+                            if (mBleScanConnectListener != null) {
+                                mBleScanConnectListener.onConnectionSuccess(mac);
                             }
-                            CallbackDisIm.getInstance().onConnectionSuccess(mCallback, mac);
+                            BleConnectListenerIm.getInstance().onConnectionSuccess(mBleScanConnectListener, mac);
                         });
 
                         gattOld = gatt;
@@ -817,10 +825,10 @@ public class XBleServer extends Service {
                             BleDevice mDevice = new BleDevice(gatt, mac);
                             mBleObjectMap.put(mac, mDevice);
                             mConnectGatt = null;
-                            if (mCallback != null) {
-                                mCallback.onServicesDiscovered(mac);
+                            if (mBleScanConnectListener != null) {
+                                mBleScanConnectListener.onServicesDiscovered(mac);
                             }
-                            CallbackDisIm.getInstance().onServicesDiscovered(mCallback, mac);
+                            BleConnectListenerIm.getInstance().onServicesDiscovered(mBleScanConnectListener, mac);
 
                         }
 
@@ -940,10 +948,10 @@ public class XBleServer extends Service {
             gatt.close();
         runOnMainThread(() -> {
             BleLog.i(TAG, "通知连接断开:" + code);
-            if (mCallback != null) {
-                mCallback.onDisConnected(mac, code);
+            if (mBleScanConnectListener != null) {
+                mBleScanConnectListener.onDisConnected(mac, code);
             }
-            CallbackDisIm.getInstance().onDisConnected(mCallback, mac, code);
+            BleConnectListenerIm.getInstance().onDisConnected(mBleScanConnectListener, mac, code);
             BleDevice bleDevice = mBleObjectMap.get(mac);
             if (bleDevice != null) {
                 bleDevice.onDisConnected();
@@ -994,16 +1002,6 @@ public class XBleServer extends Service {
     }
 
 
-    //-------------------Ble连接断开接口-----------------------------
-    /**
-     * 连接接口回调
-     */
-    private OnBleScanConnectCallback mCallback = null;
-
-
-    public void setOnCallback(OnBleScanConnectCallback callback) {
-        mCallback = callback;
-    }
     //---------------------广播------------------------------------------------------------
     /**
      * 蓝牙状态的广播
@@ -1061,10 +1059,13 @@ public class XBleServer extends Service {
     private void bleOpen() {
         BleLog.i(TAG, "蓝牙打开");
         runOnMainThread(() -> {
-            if (mCallback != null) {
-                mCallback.bleOpen();
+            if (mBleScanConnectListener != null) {
+                mBleScanConnectListener.bleOpen();
             }
-            CallbackDisIm.getInstance().bleOpen(mCallback);
+            if (mOnBleStatusListener != null) {
+                mOnBleStatusListener.bleOpen();
+            }
+            BleConnectListenerIm.getInstance().bleOpen(mBleScanConnectListener);
         });
 
     }
@@ -1073,10 +1074,13 @@ public class XBleServer extends Service {
         BleLog.i(TAG, "蓝牙关闭");
         stopScan();
         runOnMainThread(() -> {
-            if (mCallback != null) {
-                mCallback.bleClose();
+            if (mBleScanConnectListener != null) {
+                mBleScanConnectListener.bleClose();
             }
-            CallbackDisIm.getInstance().bleClose(mCallback);
+            if (mOnBleStatusListener != null) {
+                mOnBleStatusListener.bleClose();
+            }
+            BleConnectListenerIm.getInstance().bleClose(mBleScanConnectListener);
         });
 
         mScanStatus = false;
@@ -1129,7 +1133,7 @@ public class XBleServer extends Service {
         stopScan();
         disconnectAll();//断开所有连接
         mBleManager = null;
-        mCallback = null;
+        mBleScanConnectListener = null;
         if (mBleStateReceiver != null) {
             unregisterReceiver(mBleStateReceiver);
             BleLog.i(TAG, "注销蓝牙广播");
@@ -1156,4 +1160,15 @@ public class XBleServer extends Service {
     }
 
 
+    public void setBleStateReceiver(BleStateReceiver bleStateReceiver) {
+        mBleStateReceiver = bleStateReceiver;
+    }
+
+    public void setOnBleScanConnectListener(OnBleScanConnectListener listener) {
+        mBleScanConnectListener = listener;
+    }
+
+    public void setOnBleStatusListener(OnBleStatusListener onBleStatusListener) {
+        mOnBleStatusListener = onBleStatusListener;
+    }
 }

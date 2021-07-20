@@ -9,8 +9,11 @@ import android.os.IBinder;
 
 import com.xing.xblelibrary.bean.BleValueBean;
 import com.xing.xblelibrary.device.BleDevice;
-import com.xing.xblelibrary.listener.OnBleScanConnectCallback;
-import com.xing.xblelibrary.listener.OnScanFilterListener;
+import com.xing.xblelibrary.listener.BleConnectListenerIm;
+import com.xing.xblelibrary.listener.OnBleConnectListener;
+import com.xing.xblelibrary.listener.OnBleScanConnectListener;
+import com.xing.xblelibrary.listener.OnBleScanFilterListener;
+import com.xing.xblelibrary.listener.OnBleStatusListener;
 import com.xing.xblelibrary.server.XBleServer;
 
 import java.util.Map;
@@ -77,8 +80,8 @@ public class XBleManager {
 
     public void setOnInitListener(onInitListener onInitListener) {
         mOnInitListener = onInitListener;
-        if (mXBleServer!=null){
-            if (mOnInitListener!=null){
+        if (mXBleServer != null) {
+            if (mOnInitListener != null) {
                 mOnInitListener.onInitSuccess();
             }
         }
@@ -88,7 +91,8 @@ public class XBleManager {
     public interface onInitListener {
         void onInitSuccess();
 
-        default void onInitFailure(){}
+        default void onInitFailure() {
+        }
     }
 
     private void startService() {
@@ -193,9 +197,9 @@ public class XBleManager {
      * @param map      给指定uuid的设备设置cid,vid,pid  <"uuid","cid,vid,pid">
      * @param scanUUID 扫描过滤的uuid
      */
-    public void startScan(OnBleScanConnectCallback callback, long timeOut, Map<String, String> map, UUID... scanUUID) {
+    public void startScan(OnBleScanConnectListener callback, long timeOut, Map<String, String> map, UUID... scanUUID) {
         if (checkBluetoothServiceStatus()) {
-            setOnCallbackBle(callback);
+            setOnBleScanConnectListener(callback);
             mXBleServer.scanLeDevice(timeOut, map, scanUUID);
         }
     }
@@ -273,7 +277,7 @@ public class XBleManager {
      *
      * @param onScanFilterListener OnScanFilterListener
      */
-    public void setOnScanFilterListener(OnScanFilterListener onScanFilterListener) {
+    public void setOnScanFilterListener(OnBleScanFilterListener onScanFilterListener) {
         if (checkBluetoothServiceStatus()) {
             mXBleServer.setOnScanFilterListener(onScanFilterListener);
         }
@@ -285,23 +289,24 @@ public class XBleManager {
      *
      * @param callback OnCallbackBle
      */
-    public void setOnCallbackBle(OnBleScanConnectCallback callback) {
+    public void setOnBleScanConnectListener(OnBleScanConnectListener callback) {
         if (checkBluetoothServiceStatus()) {
-            mXBleServer.setOnCallback(callback);
+            mXBleServer.setOnBleScanConnectListener(callback);
         }
     }
 
 
     /**
      * 设置前台服务相关参数
-     * @param id id
-     * @param icon logo
-     * @param title 标题
+     *
+     * @param id            id
+     * @param icon          logo
+     * @param title         标题
      * @param activityClass 跳转的activity
      */
     public void initForegroundService(int id, @DrawableRes int icon, String title, Class<?> activityClass) {
         if (checkBluetoothServiceStatus()) {
-            mXBleServer.initForegroundService(id,icon,title,activityClass);
+            mXBleServer.initForegroundService(id, icon, title, activityClass);
         }
     }
 
@@ -325,6 +330,7 @@ public class XBleManager {
 
     /**
      * 获取BluetoothAdapter对象
+     *
      * @return BluetoothAdapter
      */
     public BluetoothAdapter getBluetoothAdapter() {
@@ -332,6 +338,40 @@ public class XBleManager {
             return mXBleServer.getBluetoothAdapter();
         }
         return null;
+    }
+
+    /**
+     * 监听蓝牙状态
+     */
+    public void setOnBleStatusListener(OnBleStatusListener listener) {
+        if (checkBluetoothServiceStatus()) {
+            mXBleServer.setOnBleStatusListener(listener);
+        }
+    }
+
+    /**
+     * 以观察者模式监听蓝牙连接状态
+     *
+     * @param listener OnBleConnectListener
+     */
+    public void addBleConnectListener(OnBleConnectListener listener) {
+        BleConnectListenerIm.getInstance().addListListener(listener);
+    }
+
+    /**
+     * 移除监听蓝牙连接状态
+     *
+     * @param listener OnBleConnectListener
+     */
+    public void removeBleConnectListener(OnBleConnectListener listener) {
+        BleConnectListenerIm.getInstance().removeListener(listener);
+    }
+
+    /**
+     * 清空监听蓝牙连接状态的监听器
+     */
+    public void removeAllBleConnectListener() {
+        BleConnectListenerIm.getInstance().removeListenerAll();
     }
 
 
