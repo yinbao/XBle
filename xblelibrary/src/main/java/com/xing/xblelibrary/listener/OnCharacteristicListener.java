@@ -5,7 +5,7 @@ import android.bluetooth.BluetoothGattDescriptor;
 
 /**
  * xing<br>
- * 2019/11/18<br>
+ * 2021/07/21<br>
  * 透传数据接口
  */
 public interface OnCharacteristicListener {

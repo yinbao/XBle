@@ -10,7 +10,7 @@ import androidx.annotation.CallSuper;
 
 /**
  * xing<br>
- * 2019/5/10<br>
+ * 2021/07/21<br>
  * 设备对象抽象类
  */
 public abstract class BaseBleDeviceData implements  BleDevice.onDisConnectedListener, OnBleSendResultListener {

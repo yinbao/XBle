@@ -5,7 +5,7 @@ import com.xing.xblelibrary.bean.BleValueBean;
 
 /**
  * xing<br>
- * 2019/3/6<br>
+ * 2021/07/21<br>
  * 搜索过滤接口
  */
 public interface OnBleScanFilterListener {

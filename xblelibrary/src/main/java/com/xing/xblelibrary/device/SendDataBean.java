@@ -7,7 +7,7 @@ import java.util.UUID;
 
 /**
  * xing<br>
- * 2019/4/22<br>
+ * 2021/07/21<br>
  * 发送数据对象,bean
  * 由于存在发送队列,建议不要复用当前对象
  * <p>
@@ -24,7 +24,10 @@ public class SendDataBean {
      */
     private UUID uuid;
     /**
-     * 操作类型(1=读,2=写,3=信号强度)
+     * 操作类型
+     * 读{@link BleConfig#READ_DATA}
+     * 写{@link BleConfig#WRITE_DATA}
+     * 信号强度{@link BleConfig#RSSI_DATA}
      */
     private int type;
 
@@ -37,16 +40,11 @@ public class SendDataBean {
      */
     private UUID uuidService = null;
 
-    public SendDataBean(UUID uuid, int type, UUID uuidService) {
-        this(null, uuid, type, uuidService);
-    }
-
-
     /**
      * @param hex         发送的内容
      * @param uuid        需要操作的特征uuid
-     * @param type        操作类型(1=读,2=写,3=信号强度) {@link BleConfig}
-     * @param uuidService 服务uuid(一般情况下不需要设置,使用默认的即可)
+     * @param type        操作类型 {@link BleConfig#READ_DATA,BleConfig#WRITE_DATA,BleConfig#RSSI_DATA}
+     * @param uuidService 服务uuid
      */
     public SendDataBean(byte[] hex, UUID uuid, int type, UUID uuidService) {
         this.hex = hex;

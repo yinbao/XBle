@@ -2,7 +2,7 @@ package com.xing.xblelibrary.listener;
 
 /**
  * xing<br>
- * 2019/5/21<br>
+ * 2021/07/21<br>
  */
 public interface OnBleMtuListener {
 

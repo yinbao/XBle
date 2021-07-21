@@ -14,7 +14,6 @@ import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothGattServer;
 import android.bluetooth.BluetoothGattServerCallback;
-import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothManager;
 import android.bluetooth.BluetoothProfile;
 import android.bluetooth.le.ScanCallback;
@@ -56,7 +55,7 @@ import androidx.annotation.RequiresPermission;
 
 /**
  * xing<br>
- * 2019/3/5<br>
+ * 2021/07/21<br>
  * 蓝牙服务
  */
 public class XBleServer extends Service {
@@ -460,11 +459,9 @@ public class XBleServer extends Service {
                     if (mBluetoothAdapter.getBluetoothLeScanner() != null) {
                         mBluetoothAdapter.getBluetoothLeScanner().stopScan(mScanCallback);
                     }
-
                 } else {
                     mBluetoothAdapter.stopLeScan(mLeScanCallback);
                 }
-
             }
             mScanStatus = false;
             mMap = null;
@@ -804,47 +801,35 @@ public class XBleServer extends Service {
                 gattOld = null;
                 runOnMainThread(() -> {
                     //发现新服务
-                    List<BluetoothGattService> mServices = gatt.getServices();
-                    for (BluetoothGattService mService : mServices) {
-                        BleLog.i(TAG, "发现新服务:" + mService.getUuid());
-                    }
                     discoverServicesTime = 0;
                     mHandler.removeMessages(CONNECT_BLE_TIMEOUT);
                     mHandler.removeMessages(GET_BLE_SERVICE);
-                    if (mServices.size() > 0) {
-                        //获取的服务列表不为空
-                        String mac = gatt.getDevice().getAddress().toUpperCase();
-                        synchronized (mBleObjectMap) {
-                            if (mBleObjectMap.containsKey(mac)) {
-                                BleLog.i(TAG, "标签中已包含");
-                                BleDevice mConnectBleObject = mBleObjectMap.get(mac);
-                                if (mConnectBleObject != null) {
-                                    mConnectBleObject.disconnect(false);
-                                }
+                    String mac = gatt.getDevice().getAddress().toUpperCase();
+                    synchronized (mBleObjectMap) {
+                        if (mBleObjectMap.containsKey(mac)) {
+                            BleDevice mConnectBleObject = mBleObjectMap.get(mac);
+                            if (mConnectBleObject != null) {
+                                mConnectBleObject.disconnect(false);
                             }
-                            BleDevice mDevice = new BleDevice(gatt, mac);
-                            mBleObjectMap.put(mac, mDevice);
-                            mConnectGatt = null;
-                            if (mBleScanConnectListener != null) {
-                                mBleScanConnectListener.onServicesDiscovered(mac);
-                            }
-                            BleConnectListenerIm.getInstance().onServicesDiscovered(mBleScanConnectListener, mac);
-
                         }
-
-                    } else {
-                        BleLog.e(TAG, "连接失败:服务读取失败:");
-                        String mac = gatt.getDevice().getAddress();
-                        disconnect(mac, status, gatt);
-                        gatt.disconnect();
-                        gatt.close();
-                        MyBleDeviceUtils.refreshDeviceCache(gatt);
+                        BleDevice mDevice = new BleDevice(gatt, mac);
+                        mBleObjectMap.put(mac, mDevice);
+                        if (mBleScanConnectListener != null) {
+                            mBleScanConnectListener.onServicesDiscovered(mac);
+                        }
+                        BleConnectListenerIm.getInstance().onServicesDiscovered(mBleScanConnectListener, mac);
                         mConnectGatt = null;
-                    }
 
+                    }
                 });
             } else {
-                BleLog.e(TAG, "服务读取失败");
+                BleLog.e(TAG, "连接失败:服务读取失败:");
+                String mac = gatt.getDevice().getAddress();
+                disconnect(mac, -2, gatt);
+                gatt.disconnect();
+                gatt.close();
+                MyBleDeviceUtils.refreshDeviceCache(gatt);
+                mConnectGatt = null;
             }
         }
 
