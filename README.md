@@ -3,7 +3,7 @@
 
 
 ##  使用条件
-1. Android SDK最低版本android4.4（API 19）。
+1. Android SDK最低版本android4.4（API 19).
 2. 设备所使用蓝牙版本需要4.0及以上。
 3. 配置java1.8
 4. 项目依赖androidx库
