@@ -5,7 +5,7 @@ import java.util.UUID;
 
 /**
  * xing<br>
- * 2019/3/5<br>
+ * 2021/07/21<br>
  * 蓝牙参数配置,uuid等信息
  */
 public class BleConfig {
