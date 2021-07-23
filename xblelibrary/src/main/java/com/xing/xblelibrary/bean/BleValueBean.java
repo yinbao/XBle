@@ -6,6 +6,9 @@ import android.bluetooth.le.ScanResult;
 import android.os.Build;
 import android.os.ParcelUuid;
 
+import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
+
 import com.xing.xblelibrary.utils.BleBroadcastUtils;
 import com.xing.xblelibrary.utils.BleLog;
 
@@ -13,12 +16,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import androidx.annotation.Nullable;
-import androidx.annotation.RequiresApi;
-
 /**
  * 蓝牙广播内容bean<br>
- * 搜索到的设备
+ * 搜索到的外围设备
  */
 public class BleValueBean {
     private static String TAG = BleValueBean.class.getName();

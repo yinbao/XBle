@@ -12,8 +12,15 @@ import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattDescriptor;
+import android.bluetooth.BluetoothGattServer;
+import android.bluetooth.BluetoothGattServerCallback;
+import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothManager;
 import android.bluetooth.BluetoothProfile;
+import android.bluetooth.le.AdvertiseCallback;
+import android.bluetooth.le.AdvertiseData;
+import android.bluetooth.le.AdvertiseSettings;
+import android.bluetooth.le.BluetoothLeAdvertiser;
 import android.bluetooth.le.ScanCallback;
 import android.bluetooth.le.ScanResult;
 import android.bluetooth.le.ScanSettings;
@@ -36,14 +43,18 @@ import androidx.annotation.RequiresApi;
 import androidx.annotation.RequiresPermission;
 
 import com.xing.xblelibrary.bean.BleValueBean;
+import com.xing.xblelibrary.device.AdBleDevice;
 import com.xing.xblelibrary.device.BleDevice;
 import com.xing.xblelibrary.listener.BleConnectListenerIm;
+import com.xing.xblelibrary.listener.OnBleAdvertiserListener;
 import com.xing.xblelibrary.listener.OnBleScanConnectListener;
 import com.xing.xblelibrary.listener.OnBleScanFilterListener;
 import com.xing.xblelibrary.listener.OnBleStatusListener;
+import com.xing.xblelibrary.listener.OnCharacteristicRequestListener;
 import com.xing.xblelibrary.utils.BleLog;
 import com.xing.xblelibrary.utils.MyBleDeviceUtils;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -123,7 +134,7 @@ public class XBleServer extends Service {
     /**
      * 连接后的蓝牙对象
      */
-    private Map<String, BleDevice> mBleObjectMap;
+    private volatile Map<String, BleDevice> mBleObjectMap;
 
     /**
      * 需要过滤的uuid
@@ -200,7 +211,8 @@ public class XBleServer extends Service {
                             if (mBleScanConnectListener != null) {
                                 mBleScanConnectListener.onDisConnected(address, -1);
                             }
-                            BleConnectListenerIm.getInstance().onDisConnected(mBleScanConnectListener, address, -1);
+                            BleConnectListenerIm.getInstance()
+                                    .onDisConnected(mBleScanConnectListener, address, -1);
                         });
                     } else {
                         BleLog.e(TAG, "蓝牙连接超时:mConnectGatt=null");
@@ -420,7 +432,8 @@ public class XBleServer extends Service {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                 if (mScanCallback == null)
                     mScanCallback = new MyScanCallback();
-                ScanSettings settings = new ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).build();
+                ScanSettings settings = new ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
+                        .build();
                 mBluetoothAdapter.getBluetoothLeScanner().startScan(null, settings, mScanCallback);
             } else {
                 mBluetoothAdapter.startLeScan(mLeScanCallback);
@@ -602,7 +615,6 @@ public class XBleServer extends Service {
     private volatile BluetoothGatt mConnectGatt = null;
 
 
-
     public void connectDevice(String mAddress) {
         connectBleDevice(mAddress);
     }
@@ -685,6 +697,15 @@ public class XBleServer extends Service {
     }
 
 
+    /**
+     * 获取所有的连接对象
+     *
+     * @return List<BleDevice>
+     */
+    public List<BleDevice> getBleDeviceAll() {
+        return new ArrayList<>(mBleObjectMap.values());
+    }
+
     //------------------------------------------------------------------------------------------
 
 
@@ -705,7 +726,9 @@ public class XBleServer extends Service {
         @Override
         public void onConnectionStateChange(final BluetoothGatt gatt, int status, int newState) {
             try {
-                BleLog.e(TAG, "连接返回的状态status:" + status + "||newState:" + newState + "||mac:" + gatt.getDevice().getAddress());
+                BleLog.e(TAG, "连接返回的状态status:" + status + "||newState:" + newState + "||mac:" + gatt
+                        .getDevice()
+                        .getAddress());
                 mHandler.removeMessages(GET_BLE_SERVICE);
                 mHandler.removeMessages(CONNECT_BLE_TIMEOUT);
                 if (status == BluetoothGatt.GATT_SUCCESS) {
@@ -717,7 +740,8 @@ public class XBleServer extends Service {
                             if (mBleScanConnectListener != null) {
                                 mBleScanConnectListener.onConnectionSuccess(mac);
                             }
-                            BleConnectListenerIm.getInstance().onConnectionSuccess(mBleScanConnectListener, mac);
+                            BleConnectListenerIm.getInstance()
+                                    .onConnectionSuccess(mBleScanConnectListener, mac);
                         });
 
                         gattOld = gatt;
@@ -730,7 +754,8 @@ public class XBleServer extends Service {
                         //避免系统多次回调断开连接的消息
                         if (System.currentTimeMillis() - discoverServicesTime > 500) {
                             String mAddress = gatt.getDevice().getAddress().toUpperCase();
-                            if (mConnectGatt != null && mAddress.equals(mConnectGatt.getDevice().getAddress())) {
+                            if (mConnectGatt != null && mAddress.equals(mConnectGatt.getDevice()
+                                    .getAddress())) {
                                 mConnectGatt = null;
                             }
                             discoverServicesTime = System.currentTimeMillis();
@@ -741,7 +766,9 @@ public class XBleServer extends Service {
                     }
                 } else {
                     String mAddress = gatt.getDevice().getAddress().toUpperCase();
-                    if (mConnectGatt != null && mAddress.equals(mConnectGatt.getDevice().getAddress().toUpperCase())) {
+                    if (mConnectGatt != null && mAddress.equals(mConnectGatt.getDevice()
+                            .getAddress()
+                            .toUpperCase())) {
                         mConnectGatt = null;
                     }
                     disconnect(mAddress, status, gatt);
@@ -778,7 +805,8 @@ public class XBleServer extends Service {
                         if (mBleScanConnectListener != null) {
                             mBleScanConnectListener.onServicesDiscovered(mac);
                         }
-                        BleConnectListenerIm.getInstance().onServicesDiscovered(mBleScanConnectListener, mac);
+                        BleConnectListenerIm.getInstance()
+                                .onServicesDiscovered(mBleScanConnectListener, mac);
                         mConnectGatt = null;
 
                     }
@@ -1095,7 +1123,7 @@ public class XBleServer extends Service {
     /**
      * BLE是否为广播状态
      */
-    private boolean mBleAdvertiseStatus=false;
+    private boolean mBleAdvertiseStatus = false;
 
     private OnBleAdvertiserListener mOnBleAdvertiserListener;
     private OnCharacteristicRequestListener mOnCharacteristicRequestListener;
@@ -1110,7 +1138,11 @@ public class XBleServer extends Service {
         settingsBuilder.setConnectable(true);//能否连接,广播分为可连接广播和不可连接广播
         settingsBuilder.setTimeout(0);
         AdvertiseData.Builder dataBuilder = new AdvertiseData.Builder();
-        dataBuilder.setIncludeDeviceName(true);
+        dataBuilder.setIncludeDeviceName(true);//设置广播中是否包含名称
+        dataBuilder.setIncludeTxPowerLevel(true);//设置广播中是否包含传输速率
+        dataBuilder.addManufacturerData(0,null);//设置自定义厂商数据
+        dataBuilder.addServiceUuid(null);//设置广播的服务uuid
+        dataBuilder.addServiceData(null,null);//设置广播的服务uuid,内容
 
         BluetoothLeAdvertiser bluetoothLeAdvertiser = mBluetoothAdapter.getBluetoothLeAdvertiser();
         bluetoothLeAdvertiser.startAdvertising(settingsBuilder.build(), dataBuilder.build(), new AdvertiseCallback() {
@@ -1134,6 +1166,21 @@ public class XBleServer extends Service {
             }
         });
 
+        // =============启动BLE蓝牙服务端=====================================================================================
+        BluetoothGattService service = new BluetoothGattService(UUID_SERVICE, BluetoothGattService.SERVICE_TYPE_PRIMARY);
+        //添加可读+通知characteristic
+        BluetoothGattCharacteristic characteristicRead = new BluetoothGattCharacteristic(UUID_CHAR_READ_NOTIFY,
+                BluetoothGattCharacteristic.PROPERTY_READ | BluetoothGattCharacteristic.PROPERTY_NOTIFY, BluetoothGattCharacteristic.PERMISSION_READ);
+        characteristicRead.addDescriptor(new BluetoothGattDescriptor(UUID_DESC_NOTITY, BluetoothGattCharacteristic.PERMISSION_WRITE));
+        service.addCharacteristic(characteristicRead);
+        //添加可写characteristic
+        BluetoothGattCharacteristic characteristicWrite = new BluetoothGattCharacteristic(UUID_CHAR_WRITE,
+                BluetoothGattCharacteristic.PROPERTY_WRITE, BluetoothGattCharacteristic.PERMISSION_WRITE);
+        service.addCharacteristic(characteristicWrite);
+        if (bluetoothManager != null)
+            mBluetoothGattServer = bluetoothManager.openGattServer(this, mBluetoothGattServerCallback);
+        mBluetoothGattServer.addService(service);
+
     }
 
     /**
@@ -1145,10 +1192,8 @@ public class XBleServer extends Service {
     /**
      * 手机作为中央操作
      * 设备监听,监听指定的mac地址的设备,发现连接成功后马上连接获取操作的对象
-     *
-     * @param mAddress 设备地址,null或者空字符串可以监听所有的地址
      */
-    public void deviceConnectListener(String mAddress) {
+    public void deviceConnectListener() {
         //设备已连接
         mBluetoothGattServer = mBleManager.openGattServer(this, new BluetoothGattServerCallback() {
             @Override
@@ -1160,11 +1205,8 @@ public class XBleServer extends Service {
                     if (mConnectGatt == null) {
                         //当前不在连接状态
                         String address = device.getAddress();
-                        if (TextUtils.isEmpty(mAddress)) {
-                            connectDevice(address);
-                        } else if (mAddress.equalsIgnoreCase(device.getAddress())) {
-                            connectDevice(mAddress);
-                        }
+                        connectDevice(address);//手机作为中央,去连接外围设备
+
                     }
                 }
             }

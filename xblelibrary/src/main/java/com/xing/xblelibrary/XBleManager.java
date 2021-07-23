@@ -7,6 +7,9 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.IBinder;
 
+import androidx.annotation.DrawableRes;
+import androidx.annotation.Nullable;
+
 import com.xing.xblelibrary.bean.BleValueBean;
 import com.xing.xblelibrary.device.BleDevice;
 import com.xing.xblelibrary.listener.BleConnectListenerIm;
@@ -18,9 +21,6 @@ import com.xing.xblelibrary.server.XBleServer;
 
 import java.util.Map;
 import java.util.UUID;
-
-import androidx.annotation.DrawableRes;
-import androidx.annotation.Nullable;
 
 /**
  * xing<br>
@@ -264,11 +264,10 @@ public class XBleManager {
      * 设备监听,监听指定的mac地址的设备,发现连接成功后马上连接获取操作的对象
      *
      * @param mAddress 设备地址,null或者空字符串可以监听所有的地址
-     * @param status   是否开启监听
      */
-    public void deviceConnectListener(String mAddress, boolean status) {
+    public void deviceConnectListener() {
         if (checkBluetoothServiceStatus()) {
-            mXBleServer.deviceConnectListener(mAddress, status);
+            mXBleServer.deviceConnectListener();
         }
     }
 

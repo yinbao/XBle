@@ -26,8 +26,9 @@ import java.util.UUID;
 
 /**
  * xing<br>
- * 2019/5/9<br>
- * 设备基类对象
+ * 2021/07/22<br>
+ * BLE设备对象
+ * 手机作为外围设备(被其他手机或者设备连接生成的对象)
  */
 public final class AdBleDevice {
     protected static String TAG = AdBleDevice.class.getName();
