@@ -261,6 +261,17 @@ public class XBleManager {
     }
 
     /**
+     * 设备BLE连接超时时间(获取服务超时时间,超时后连接错误码返回-1)
+     *
+     * @param connectTimeout 时间ms
+     */
+    public void setConnectBleTimeout(long connectTimeout) {
+        if (checkBluetoothServiceStatus()) {
+            mXBleServer.setConnectBleTimeout(connectTimeout);
+        }
+    }
+
+    /**
      * 设备监听,监听指定的mac地址的设备,发现连接成功后马上连接获取操作的对象
      *
      * @param mAddress 设备地址,null或者空字符串可以监听所有的地址

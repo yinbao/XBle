@@ -31,34 +31,6 @@ public class BleStrUtils {
         return hs.toString();
     }
 
-    /**
-     * int  10进制转16进制(返回大写字母)
-     *
-     * @return 16进制String
-     */
-    public static String getHexString(int number) {
-        return Integer.toHexString(number);
-    }
-
-    /**
-     * 将字符串转为16进制
-     * @param str
-     * @return
-     */
-    public static String str2HexStr(String str) {
-        char[] chars = "0123456789ABCDEF".toCharArray();
-        StringBuilder sb = new StringBuilder("");
-        byte[] bs = str.getBytes();
-        int bit;
-        for (int i = 0; i < bs.length; i++) {
-            bit = (bs[i] & 0x0f0) >> 4;
-            sb.append(chars[bit]);
-            bit = bs[i] & 0x0f;
-            sb.append(chars[bit]);
-        }
-        return sb.toString().trim();
-    }
-
 
 
     /**

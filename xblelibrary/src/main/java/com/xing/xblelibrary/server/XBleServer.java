@@ -115,7 +115,7 @@ public class XBleServer extends Service {
     /**
      * 蓝牙连接超时
      */
-    private int mConnectBleTimeout = 10 * 1000;
+    private long mConnectBleTimeout = 10 * 1000;
     /**
      * 扫描次数,用于判断30S内是否调用扫描次数超过5次,避免被系统判定为扫描太频繁
      */
@@ -544,9 +544,7 @@ public class XBleServer extends Service {
         public void onBatchScanResults(List<ScanResult> results) {
             super.onBatchScanResults(results);
             mScanErr = 0;
-            if (mBleScanConnectListener != null) {
-                mBleScanConnectListener.onScanTimeOut();
-            }
+
 
         }
 
@@ -1140,14 +1138,11 @@ public class XBleServer extends Service {
     /**
      * 设置连接超时时间
      */
-    public void setConnectBleTimeout(int connectBleTimeout) {
+    public void setConnectBleTimeout(long connectBleTimeout) {
         this.mConnectBleTimeout = connectBleTimeout;
     }
 
 
-    public void setBleStateReceiver(BleStateReceiver bleStateReceiver) {
-        mBleStateReceiver = bleStateReceiver;
-    }
 
     public void setOnBleScanConnectListener(OnBleScanConnectListener listener) {
         mBleScanConnectListener = listener;
