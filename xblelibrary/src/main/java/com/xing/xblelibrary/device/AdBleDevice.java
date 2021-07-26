@@ -1,23 +1,22 @@
 package com.xing.xblelibrary.device;
 
+import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattDescriptor;
+import android.bluetooth.BluetoothGattServer;
 import android.bluetooth.BluetoothGattService;
-import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 
 import androidx.annotation.CallSuper;
-import androidx.annotation.RequiresApi;
 
 import com.xing.xblelibrary.config.BleConfig;
 import com.xing.xblelibrary.listener.OnBleMtuListener;
 import com.xing.xblelibrary.listener.OnBleRssiListener;
 import com.xing.xblelibrary.listener.OnBleSendResultListener;
 import com.xing.xblelibrary.listener.OnCharacteristicListener;
-import com.xing.xblelibrary.listener.OnNotifyDataListener;
 import com.xing.xblelibrary.utils.BleLog;
 import com.xing.xblelibrary.utils.MyBleDeviceUtils;
 
@@ -27,16 +26,16 @@ import java.util.UUID;
 
 /**
  * xing<br>
- * 2021/07/21<br>
+ * 2021/07/22<br>
  * BLE设备对象
- * 手机作为中央设备(连接其他设备生成的对象)
+ * 手机作为外围设备(被其他手机或者设备连接生成的对象)
  */
-public final class BleDevice {
-    protected static String TAG = BleDevice.class.getName();
+public final class AdBleDevice {
+    protected static String TAG = AdBleDevice.class.getName();
 
     private final int SEND_DATA_KEY = 1;
     private int mSendDataInterval = 200;
-    private BluetoothGatt mBluetoothGatt;
+    private BluetoothGattServer mBluetoothGattServer;
     /**
      * 是否连接成功
      */
@@ -65,7 +64,6 @@ public final class BleDevice {
     private LinkedList<SendDataBean> mLinkedListHandshake;
     private OnBleSendResultListener mOnBleSendResultListener;
     private onDisConnectedListener mOnDisConnectedListener;
-    private OnNotifyDataListener mOnNotifyDataListener;
 
     private OnBleRssiListener mOnBleRssiListener;
     private OnBleMtuListener mOnBleMtuListener;
@@ -73,11 +71,11 @@ public final class BleDevice {
     private OnCharacteristicListener mOnCharacteristicListener;
 
 
-    public BleDevice(BluetoothGatt bluetoothGatt, String mac) {
+    public AdBleDevice(BluetoothDevice device,BluetoothGattServer bluetoothGattServer) {
         BleLog.i("连接成功:" + mac);
-        mBluetoothGatt = bluetoothGatt;
-        this.mac = mac;
-        this.mName = bluetoothGatt.getDevice().getName();
+        mBluetoothGattServer = bluetoothGattServer;
+        this.mac = device.getAddress();
+        this.mName = device.getName();
         connectSuccess = true;
         mLinkedList = new LinkedList<>();
         mLinkedListNotify = new LinkedList<>();
@@ -93,8 +91,8 @@ public final class BleDevice {
      * @return 是否包含
      */
     public boolean containsServiceUuid(UUID serviceUuid) {
-        if (mBluetoothGatt != null) {
-            List<BluetoothGattService> services = mBluetoothGatt.getServices();
+        if (mBluetoothGattServer != null) {
+            List<BluetoothGattService> services = mBluetoothGattServer.getServices();
             for (BluetoothGattService service : services) {
                 if (service.getUuid().toString().equalsIgnoreCase(serviceUuid.toString())) {
                     return true;
@@ -134,25 +132,6 @@ public final class BleDevice {
         }
     }
 
-
-    /**
-     * 开启所有的Notify
-     */
-    public void setNotifyAll() {
-        List<BluetoothGattService> services = mBluetoothGatt.getServices();
-        for (BluetoothGattService service : services) {
-            List<BluetoothGattCharacteristic> characteristics = service.getCharacteristics();
-            for (BluetoothGattCharacteristic characteristic : characteristics) {
-                int properties = characteristic.getProperties();
-                if ((properties & BluetoothGattCharacteristic.PROPERTY_NOTIFY) != 0x00) {
-                    UUID uuid = characteristic.getUuid();
-                    sendOpenNotify(service.getUuid(), uuid);
-                }
-            }
-        }
-    }
-
-
     /**
      * 设置通知,有发送队列,不会马上生效,会等待系统回调设置成功后再会设置下一个,一般间隔在100ms左右,与固件性能有关
      */
@@ -160,8 +139,7 @@ public final class BleDevice {
         mLinkedListNotify.addFirst(new SendDataBean(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE, uuidNotify, BleConfig.NOTICE_DATA, uuidService));
         if (mLinkedListNotify.size() <= 1) {
             SendDataBean sendDataBean = mLinkedListNotify.getLast();
-            sendCmd(sendDataBean.getHex(), sendDataBean.getUuid(), sendDataBean.getType(), sendDataBean
-                    .getUuidService());
+            sendCmd(sendDataBean.getHex(), sendDataBean.getUuid(), sendDataBean.getType(), sendDataBean.getUuidService());
             mHandler.removeMessages(SEND_DATA_KEY);
         }
     }
@@ -170,8 +148,7 @@ public final class BleDevice {
         mLinkedListNotify.addFirst(new SendDataBean(BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE, uuidNotify, BleConfig.NOTICE_DATA, uuidService));
         if (mLinkedListNotify.size() <= 1) {
             SendDataBean sendDataBean = mLinkedListNotify.getLast();
-            sendCmd(sendDataBean.getHex(), sendDataBean.getUuid(), sendDataBean.getType(), sendDataBean
-                    .getUuidService());
+            sendCmd(sendDataBean.getHex(), sendDataBean.getUuid(), sendDataBean.getType(), sendDataBean.getUuidService());
         }
     }
 
@@ -182,18 +159,18 @@ public final class BleDevice {
      * @param notice 断开后是否需要系统回调通知
      */
     public final void disconnect(boolean notice) {
-        if (mBluetoothGatt != null) {
+        if (mBluetoothGattServer != null) {
             synchronized (BluetoothGatt.class) {
-                if (mBluetoothGatt != null) {
+                if (mBluetoothGattServer != null) {
                     mHandler.removeCallbacksAndMessages(null);
                     if (!notice) {
 //                        mBluetoothGatt.disconnect();
                         //close后系统将不会再回调onConnectionStateChange通知
-                        mBluetoothGatt.close();
-                        mBluetoothGatt = null;
+                        mBluetoothGattServer.close();
+                        mBluetoothGattServer = null;
                         return;
                     }
-                    mBluetoothGatt.disconnect();
+                    mBluetoothGattServer.close();
                     onDisConnected();
                 }
             }
@@ -219,9 +196,6 @@ public final class BleDevice {
             //清空发送队列
             mHandler.removeCallbacksAndMessages(null);
         }
-        if (mOnDisConnectedListener != null) {
-            mOnDisConnectedListener.onDisConnected();
-        }
     }
 
 
@@ -231,13 +205,6 @@ public final class BleDevice {
     public final void notifyData(BluetoothGattCharacteristic characteristic) {
         if (mOnCharacteristicListener != null) {
             mOnCharacteristicListener.onCharacteristicChanged(characteristic);
-        }
-
-
-        if (mOnNotifyDataListener != null) {
-            UUID uuid = characteristic.getUuid();
-            byte[] value = characteristic.getValue();
-            mOnNotifyDataListener.onNotifyData(uuid, value);
         }
     }
 
@@ -262,36 +229,6 @@ public final class BleDevice {
     }
 
 
-    /**
-     * 返回的Mtu
-     *
-     * @param mtu 实际支持的最大字节数
-     */
-    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
-    public boolean setMtu(int mtu) {
-        if (mBluetoothGatt != null) {
-            return mBluetoothGatt.requestMtu(mtu);
-        }
-        return false;
-    }
-
-
-    /**
-     * 设置连接参数
-     *
-     * @param connectionPriority 参数
-     *                           {@link BluetoothGatt#CONNECTION_PRIORITY_BALANCED}默认
-     *                           {@link BluetoothGatt#CONNECTION_PRIORITY_HIGH}高功率,提高传输速度
-     *                           {@link BluetoothGatt#CONNECTION_PRIORITY_LOW_POWER}低功率,传输速度减慢,更省电
-     * @return 结果
-     */
-    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
-    public boolean setConnectPriority(int connectionPriority) {
-        if (mBluetoothGatt != null) {
-            return mBluetoothGatt.requestConnectionPriority(connectionPriority);
-        }
-        return false;
-    }
 
 
     @CallSuper
@@ -322,8 +259,7 @@ public final class BleDevice {
             mLinkedListNotify.removeLast();
             if (mLinkedListNotify.size() > 0) {
                 SendDataBean sendDataBean = mLinkedListNotify.getLast();
-                sendCmd(sendDataBean.getHex(), sendDataBean.getUuid(), sendDataBean.getType(), sendDataBean
-                        .getUuidService());
+                sendCmd(sendDataBean.getHex(), sendDataBean.getUuid(), sendDataBean.getType(), sendDataBean.getUuidService());
                 mHandler.removeMessages(SEND_DATA_KEY);
             } else {
                 mHandler.removeMessages(SEND_DATA_KEY);
@@ -353,6 +289,7 @@ public final class BleDevice {
             mHandler.sendEmptyMessageDelayed(SEND_DATA_KEY, mSendDataInterval / 2);
         }
     }
+
 
 
     /**
@@ -389,8 +326,7 @@ public final class BleDevice {
                 if (mLinkedList.size() > 0) {
                     SendDataBean sendDataBean = mLinkedList.pollLast();
                     if (sendDataBean != null) {
-                        sendCmd(sendDataBean.getHex(), sendDataBean.getUuid(), sendDataBean.getType(), sendDataBean
-                                .getUuidService());
+                        sendCmd(sendDataBean.getHex(), sendDataBean.getUuid(), sendDataBean.getType(), sendDataBean.getUuidService());
                         mHandler.sendEmptyMessageDelayed(SEND_DATA_KEY, mSendDataInterval);//设置间隔,避免发送失败
                     } else {
                         mHandler.sendEmptyMessage(SEND_DATA_KEY);//没有需要发送的数据,不需要间隔
@@ -410,7 +346,7 @@ public final class BleDevice {
      */
     private synchronized void sendCmd(byte[] hex, UUID uuid, int type, UUID uuidService) {
         try {
-            BluetoothGatt gatt = mBluetoothGatt;
+            BluetoothGatt gatt =null;
             if (gatt != null) {
                 BluetoothGattService mGattService = MyBleDeviceUtils.getService(gatt, uuidService);
                 if (mGattService != null && uuid != null) {
@@ -419,13 +355,7 @@ public final class BleDevice {
                         if (hex != null) {
                             mCharacteristic.setValue(hex);
                         }
-                        int properties = mCharacteristic.getProperties();
-                        if ((properties & BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE) != 0) {
-                            //写,无回复 WRITE_TYPE_NO_RESPONSE
-                            mCharacteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
-                        } else {
-                            mCharacteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
-                        }
+                        mCharacteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
                         boolean sendOk = false;
                         switch (type) {
                             case BleConfig.READ_DATA:
@@ -447,27 +377,19 @@ public final class BleDevice {
                                 break;
 
                             case BleConfig.NOTICE_DATA:
-                                if ((properties & BluetoothGattCharacteristic.PROPERTY_NOTIFY) != 0x00) {
-                                    //支持notify
-                                    gatt.setCharacteristicNotification(mCharacteristic, true);
-                                    BluetoothGattDescriptor bluetoothGattDescriptor = mCharacteristic
-                                            .getDescriptor(BleConfig.UUID_NOTIFY_DESCRIPTOR);
-                                    if (bluetoothGattDescriptor != null) {
-                                        bluetoothGattDescriptor.setValue(hex);
-                                        sendOk = gatt.writeDescriptor(bluetoothGattDescriptor);
-                                        if (mOnBleSendResultListener != null) {
-                                            mOnBleSendResultListener.onNotifyResult(uuid, sendOk);
-                                        }
-                                        if (!sendOk) {
-                                            BleLog.e(TAG, "NOTICE_DATA:UUID=" + uuid + " || false");
-                                            descriptorWriteOk(null);
-                                            return;
-                                        }
-                                    } else {
-                                        descriptorWriteOk(null);
+                                mCharacteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);//部分手机Notify需要设置这个后才会生效
+                                gatt.setCharacteristicNotification(mCharacteristic, true);
+                                BluetoothGattDescriptor bluetoothGattDescriptor = mCharacteristic.getDescriptor(BleConfig.UUID_NOTIFY_DESCRIPTOR);
+                                if (bluetoothGattDescriptor != null) {
+                                    bluetoothGattDescriptor.setValue(hex);
+                                    sendOk = gatt.writeDescriptor(bluetoothGattDescriptor);
+                                    if (mOnBleSendResultListener != null) {
+                                        mOnBleSendResultListener.onNotifyResult(uuid, sendOk);
                                     }
-                                } else {
-                                    descriptorWriteOk(null);
+                                    if (!sendOk) {
+                                        BleLog.e(TAG, "NOTICE_DATA:UUID=" + uuid + " || false");
+                                        return;
+                                    }
                                 }
 
                                 break;
@@ -524,8 +446,8 @@ public final class BleDevice {
     }
 
 
-    public BluetoothGatt getBluetoothGatt() {
-        return mBluetoothGatt;
+    public BluetoothGattServer getBluetoothGatt() {
+        return mBluetoothGattServer;
     }
 
     /**
@@ -543,10 +465,6 @@ public final class BleDevice {
 
     public void setOnDisConnectedListener(onDisConnectedListener onDisConnectedListener) {
         mOnDisConnectedListener = onDisConnectedListener;
-    }
-
-    public void setOnNotifyDataListener(OnNotifyDataListener onNotifyDataListener) {
-        mOnNotifyDataListener = onNotifyDataListener;
     }
 
     /**
