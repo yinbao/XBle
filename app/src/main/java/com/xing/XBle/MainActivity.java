@@ -2,6 +2,7 @@ package com.xing.XBle;
 
 import android.Manifest;
 import android.bluetooth.BluetoothGatt;
+import android.bluetooth.le.AdvertiseSettings;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
@@ -16,8 +17,12 @@ import android.widget.Button;
 import android.widget.ListView;
 
 import com.xing.xblelibrary.XBleManager;
+import com.xing.xblelibrary.bean.AdBleValueBean;
+import com.xing.xblelibrary.bean.AdCharacteristic;
+import com.xing.xblelibrary.bean.AdGattService;
 import com.xing.xblelibrary.bean.BleValueBean;
 import com.xing.xblelibrary.device.BleDevice;
+import com.xing.xblelibrary.listener.OnBleAdvertiserListener;
 import com.xing.xblelibrary.listener.OnBleScanConnectListener;
 import com.xing.xblelibrary.listener.OnNotifyDataListener;
 import com.xing.xblelibrary.utils.BleLog;
@@ -32,7 +37,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
-public class MainActivity extends AppCompatActivity implements OnBleScanConnectListener {
+public class MainActivity extends AppCompatActivity implements OnBleScanConnectListener,OnBleAdvertiserListener, View.OnClickListener {
 
 
     private final int REFRESH_BLE = 1;
@@ -44,7 +49,9 @@ public class MainActivity extends AppCompatActivity implements OnBleScanConnectL
     private ArrayAdapter mListAdapterData;
     private ListView mListViewBle;
     private ListView mListViewData;
-    private Button btn_start_scan,btn_clear,btn_stop_scan,btn_disconnect;
+    private Button btn_start_scan,btn_clear,btn_stop_scan,btn_disconnect,btn_start_ad,btn_stop_ad;
+    public static String UUID_SERVER_BROADCAST_AILINK = "0000F0A0-0000-1000-8000-00805F9B34FB";
+
 
     private Handler mHandler = new Handler(Looper.getMainLooper()) {
         @Override
@@ -108,36 +115,58 @@ public class MainActivity extends AppCompatActivity implements OnBleScanConnectL
             }
         });
 
-        btn_start_scan.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                XBleManager.getInstance().startScan(30000);
-            }
-        });
-        btn_stop_scan.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                XBleManager.getInstance().stopScan();
-                mListData.add(0,TimeUtils.getCurrentTimeStr() + "停止扫描");
-                mHandler.sendEmptyMessage(REFRESH_DATA);
-            }
-        });
-        btn_clear.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                mListBle.clear();
-                mHandler.sendEmptyMessage(REFRESH_BLE);
-                mListData.clear();
-                mHandler.sendEmptyMessage(REFRESH_DATA);
-            }
-        });
-        btn_disconnect.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                XBleManager.getInstance().disconnectAll();
-            }
-        });
+        btn_start_scan.setOnClickListener(this);
+        btn_stop_scan.setOnClickListener(this);
+        btn_clear.setOnClickListener(this);
+        btn_disconnect.setOnClickListener(this);
+        btn_start_ad.setOnClickListener(this);
+        btn_stop_ad.setOnClickListener(this);
 
+    }
+
+
+    @Override
+    public void onClick(View v) {
+        int id = v.getId();
+        if (id == R.id.btn_start_ad) {
+            //开始广播
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                AdCharacteristic adCharacteristic=AdCharacteristic.newBuilder()
+                        .setReadStatus(true)
+                        .setWriteStatus(true)
+                        .setNotifyStatus(true)
+                        .build(UUID_SERVER_BROADCAST_AILINK);
+                AdGattService adGattService=AdGattService.newBuilder().addAdCharacteristic(adCharacteristic).build(UUID_SERVER_BROADCAST_AILINK);
+
+                AdBleValueBean adBleValueBean=AdBleValueBean.newBuilder()
+                        .addGattService(adGattService)
+                        .addAdServiceUuid(UUID_SERVER_BROADCAST_AILINK)
+                        .setTimeoutMillis(0)//一直广播
+                        .setIncludeTxPowerLevel(false)//不广播功耗
+                        .addManufacturerData(0x01,new byte[]{0x01,0x02,0x03})
+                        .build();
+
+                XBleManager.getInstance().startAdvertiseData(adBleValueBean,MainActivity.this);
+            }
+        } else if (id == R.id.btn_stop_ad) {
+            //停止广播
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                XBleManager.getInstance().stopAdvertiseData(MainActivity.this);
+            }
+        } else if (id == R.id.btn_start_scan) {
+            XBleManager.getInstance().startScan(30000);
+        } else if (id == R.id.btn_stop_scan) {
+            XBleManager.getInstance().stopScan();
+            mListData.add(0,TimeUtils.getCurrentTimeStr() + "停止扫描");
+            mHandler.sendEmptyMessage(REFRESH_DATA);
+        } else if (id == R.id.btn_clear) {
+            mListBle.clear();
+            mHandler.sendEmptyMessage(REFRESH_BLE);
+            mListData.clear();
+            mHandler.sendEmptyMessage(REFRESH_DATA);
+        } else if (id == R.id.btn_disconnect) {
+            XBleManager.getInstance().disconnectAll();
+        }
     }
 
     private void initData() {
@@ -158,8 +187,8 @@ public class MainActivity extends AppCompatActivity implements OnBleScanConnectL
         btn_clear=findViewById(R.id.btn_clear);
         btn_stop_scan=findViewById(R.id.btn_stop_scan);
         btn_disconnect=findViewById(R.id.btn_disconnect);
-
-
+        btn_start_ad=findViewById(R.id.btn_start_ad);
+        btn_stop_ad=findViewById(R.id.btn_stop_ad);
     }
 
 
@@ -340,6 +369,36 @@ public class MainActivity extends AppCompatActivity implements OnBleScanConnectL
     public void bleClose() {
         //蓝牙已关闭
         mListData.add(0,TimeUtils.getCurrentTimeStr() + "蓝牙已关闭");
+        mHandler.sendEmptyMessage(REFRESH_DATA);
+    }
+
+
+    @Override
+    public void onStartSuccess(AdvertiseSettings advertiseSettings) {
+        BleLog.i("广播成功:" + advertiseSettings.toString());
+        mListData.add(0,TimeUtils.getCurrentTimeStr() + "广播成功");
+        mHandler.sendEmptyMessage(REFRESH_DATA);
+    }
+
+
+
+
+    @Override
+    public void onStartFailure(int errorCode) {
+        mListData.add(0,TimeUtils.getCurrentTimeStr() + "广播失败:"+errorCode);
+        mHandler.sendEmptyMessage(REFRESH_DATA);
+    }
+    @Override
+    public void onStopSuccess(AdvertiseSettings advertiseSettings) {
+        BleLog.i("停止广播成功:" + advertiseSettings.toString());
+        mListData.add(0,TimeUtils.getCurrentTimeStr() + "停止广播成功");
+        mHandler.sendEmptyMessage(REFRESH_DATA);
+    }
+
+
+    @Override
+    public void onStopFailure(int errorCode) {
+        mListData.add(0,TimeUtils.getCurrentTimeStr() + "停止广播失败:"+errorCode);
         mHandler.sendEmptyMessage(REFRESH_DATA);
     }
 }

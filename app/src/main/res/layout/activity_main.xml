@@ -41,6 +41,28 @@
 
     </LinearLayout>
 
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <Button
+            android:id="@+id/btn_start_ad"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="开始广播"
+            />
+
+        <Button
+            android:id="@+id/btn_stop_ad"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="停止广播"
+            />
+
+
+
+    </LinearLayout>
+
     <ListView
         android:id="@+id/lv_show_ble"
         android:layout_width="match_parent"

@@ -5,14 +5,14 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.os.Build;
 import android.os.IBinder;
 
-import androidx.annotation.DrawableRes;
-import androidx.annotation.Nullable;
-
+import com.xing.xblelibrary.bean.AdBleValueBean;
 import com.xing.xblelibrary.bean.BleValueBean;
 import com.xing.xblelibrary.device.BleDevice;
 import com.xing.xblelibrary.listener.BleConnectListenerIm;
+import com.xing.xblelibrary.listener.OnBleAdvertiserListener;
 import com.xing.xblelibrary.listener.OnBleConnectListener;
 import com.xing.xblelibrary.listener.OnBleScanConnectListener;
 import com.xing.xblelibrary.listener.OnBleScanFilterListener;
@@ -21,6 +21,10 @@ import com.xing.xblelibrary.server.XBleServer;
 
 import java.util.Map;
 import java.util.UUID;
+
+import androidx.annotation.DrawableRes;
+import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
 
 /**
  * xing<br>
@@ -160,6 +164,9 @@ public class XBleManager {
     private void onServiceSuccess() {
         if (mOnInitListener != null) {
             mOnInitListener.onInitSuccess();
+        }
+        if (mXBleServer!=null){
+            mXBleServer.deviceConnectListener();
         }
     }
 
@@ -384,5 +391,22 @@ public class XBleManager {
         BleConnectListenerIm.getInstance().removeListenerAll();
     }
 
+
+    //----------------广播-------------------
+
+    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+    public void startAdvertiseData(AdBleValueBean adBleValueBean, OnBleAdvertiserListener listener){
+        if (mXBleServer!=null){
+            mXBleServer.startAdvertiseData(adBleValueBean,listener);
+        }
+    }
+
+
+    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+    public void stopAdvertiseData(OnBleAdvertiserListener listener){
+        if (mXBleServer!=null){
+            mXBleServer.stopAdvertiseData(listener);
+        }
+    }
 
 }

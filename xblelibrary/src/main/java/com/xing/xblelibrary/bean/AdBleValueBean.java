@@ -1,22 +1,20 @@
 package com.xing.xblelibrary.bean;
 
-import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothGattService;
+import android.bluetooth.le.AdvertiseData;
 import android.bluetooth.le.AdvertiseSettings;
-import android.bluetooth.le.ScanRecord;
-import android.bluetooth.le.ScanResult;
 import android.os.Build;
 import android.os.ParcelUuid;
-import android.util.ArrayMap;
+import android.text.TextUtils;
 
-import androidx.annotation.Nullable;
-import androidx.annotation.RequiresApi;
-
-import com.xing.xblelibrary.utils.BleBroadcastUtils;
-import com.xing.xblelibrary.utils.BleLog;
-
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
+import java.util.Set;
+
+import androidx.annotation.RequiresApi;
 
 /**
  * 蓝牙广播内容bean<br>
@@ -25,40 +23,267 @@ import java.util.UUID;
 @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
 public class AdBleValueBean {
 
-    private static String TAG = AdBleValueBean.class.getName();
-    private BluetoothDevice mDevice;
-    private byte[] mScanRecord;
-    private int mAdvertiseMode= AdvertiseSettings.ADVERTISE_MODE_LOW_POWER;
-    private String mName = "Name";
-    private String mac;
-    private List<byte[]> manufacturerData;
-    private List<ParcelUuid> mParcelUuids;
-    private BleBroadcastUtils mBleBroadcastUtils;
-    private Map<ParcelUuid, byte[]> mServiceData = new ArrayMap<ParcelUuid, byte[]>();
+    private List<BluetoothGattService> mBluetoothGattServiceList;
 
-    public AdBleValueBean(BluetoothDevice device, int rssi, byte[] scanRecord, Map<String, String> map) {
-        this.mName = device.getName();
-        mDevice = device;
-        mRssi = rssi;
-        mScanRecord = scanRecord;
-        mac = device.getAddress();
-        mBleBroadcastUtils = new BleBroadcastUtils(mScanRecord);
-        mParcelUuids = mBleBroadcastUtils.getServiceUuids();
-        boolean init = init(mac);
-        if (!init) {
-            BleLog.e("搜索到的设备初始化异常");
+    private AdvertiseSettings mAdvertiseSettings = null;
+    private AdvertiseData mAdvertiseData = null;
+
+    private AdBleValueBean(AdvertiseSettings advertiseSettings, AdvertiseData advertiseData, Map<String, AdGattService> gattServiceMap) {
+        mAdvertiseSettings = advertiseSettings;
+        mAdvertiseData = advertiseData;
+        Collection<AdGattService> values = gattServiceMap.values();
+        mBluetoothGattServiceList = new ArrayList<>();
+        for (AdGattService value : values) {
+            mBluetoothGattServiceList.add(value.getBluetoothGattService());
+        }
+
+    }
+
+    public List<BluetoothGattService> getBluetoothGattServiceList() {
+        return mBluetoothGattServiceList;
+    }
+
+    public AdvertiseSettings getAdvertiseSettings() {
+        return mAdvertiseSettings;
+    }
+
+    public AdvertiseData getAdvertiseData() {
+        return mAdvertiseData;
+    }
+
+    public static Builder newBuilder() {
+        return new Builder();
+    }
+
+
+    public static class Builder {
+
+        /**
+         * 广播模式: 低功耗,平衡,低延迟
+         */
+        private int mAdvertiseMode;
+        /**
+         * 发射功率级别: 极低,低,中,高
+         */
+        private int mTxPowerLevel;
+        /**
+         * 能否连接,广播分为可连接广播和不可连接广播
+         */
+        private boolean mConnectable;
+        /**
+         * 广播超时时间
+         */
+        private int mTimeoutMillis;
+        /**
+         * 广播中是否包含名称
+         */
+        private boolean mIncludeDeviceName;
+        /**
+         * 广播中是否包含传输速率
+         */
+        private boolean mIncludeTxPowerLevel;
+        /**
+         * 设置自定义厂商数据
+         */
+        private Map<Integer, byte[]> mManufacturerData;
+        /**
+         * 设置广播的服务uuid
+         */
+        private String[] mServerUuid;
+        /**
+         * 设置广播的服务uuid,内容
+         */
+        private Map<String, byte[]> mServiceUuidData;
+        private AdvertiseSettings.Builder settingsBuilder;
+        private AdvertiseData.Builder dataBuilder;
+        /**
+         * 连接后提供的gatt服务
+         */
+        private Map<String, AdGattService> mGattServiceMap;
+
+        public Builder() {
+            settingsBuilder = new AdvertiseSettings.Builder();
+            mAdvertiseMode=AdvertiseSettings.ADVERTISE_MODE_LOW_POWER;//广播模式: 低功耗,平衡,低延迟
+            mTxPowerLevel=AdvertiseSettings.ADVERTISE_TX_POWER_HIGH;//发射功率级别: 极低,低,中,高
+            mConnectable=true;//能否连接,广播分为可连接广播和不可连接广播
+            mTimeoutMillis=0;
+            dataBuilder = new AdvertiseData.Builder();
+            mIncludeDeviceName=true;//设置广播中是否包含名称
+            mIncludeTxPowerLevel=true;//设置广播中是否包含传输速率
+//            dataBuilder.addManufacturerData(0,null);//设置自定义厂商数据
+//            dataBuilder.addServiceUuid(null);//设置广播的服务uuid
+//            dataBuilder.addServiceData(null, null);//设置广播的服务uuid,内容
+
+        }
+
+
+        /**
+         * 默认:低功耗
+         * 广播模式: 低功耗,平衡,低延迟
+         *
+         * @param advertiseMode {@link AdvertiseSettings#ADVERTISE_MODE_LOW_POWER,AdvertiseSettings#ADVERTISE_MODE_BALANCED,AdvertiseSettings#ADVERTISE_MODE_LOW_LATENCY}
+         */
+        public Builder setAdvertiseMode(int advertiseMode) {
+            mAdvertiseMode = advertiseMode;
+            return this;
+        }
+
+        /**
+         * 默认:高
+         * 发射功率级别: 极低,低,中,高
+         *
+         * @param txPowerLevel {@link AdvertiseSettings#ADVERTISE_TX_POWER_ULTRA_LOW,AdvertiseSettings#ADVERTISE_TX_POWER_LOW,AdvertiseSettings#ADVERTISE_TX_POWER_MEDIUM,AdvertiseSettings#ADVERTISE_TX_POWER_HIGH}
+         */
+        public Builder setTxPowerLevel(int txPowerLevel) {
+            mTxPowerLevel = txPowerLevel;
+            return this;
+        }
+
+        /**
+         * 默认可连接
+         *
+         * @param connectable 设置是否可以连接
+         */
+        public Builder setConnectable(boolean connectable) {
+            mConnectable = connectable;
+            return this;
+
+        }
+
+        /**
+         * 设置广播超时时间
+         *
+         * @param timeoutMillis 0代表不超时,范围{0-180000 ms}
+         */
+        public Builder setTimeoutMillis(int timeoutMillis) {
+            mTimeoutMillis = timeoutMillis;
+            return this;
+        }
+
+        /**
+         * 设置广播中是否显示蓝牙名称,默认为手机蓝牙名称,不支持修改
+         *
+         * @param includeDeviceName 广播中是否显示蓝牙名称
+         */
+        public Builder setIncludeDeviceName(boolean includeDeviceName) {
+            mIncludeDeviceName = includeDeviceName;
+            return this;
+        }
+
+        /**
+         * 设置广播中是否包含发射功率级别
+         *
+         * @param includeTxPowerLevel 是否显示
+         */
+        public Builder setIncludeTxPowerLevel(boolean includeTxPowerLevel) {
+            mIncludeTxPowerLevel = includeTxPowerLevel;
+            return this;
+        }
+
+        /**
+         * 设置广播中的自定义厂商数据
+         *
+         * @param manufacturerId   厂商id
+         * @param manufacturerData 厂商数据
+         */
+        public Builder addManufacturerData(int manufacturerId, byte[] manufacturerData) {
+            if (mManufacturerData == null) {
+                mManufacturerData = new HashMap<>();
+            }
+            mManufacturerData.put(manufacturerId, manufacturerData);
+            return this;
+        }
+
+        /**
+         * 设置广播的uuid
+         *
+         * @param serviceUuid uuid
+         */
+        public Builder addAdServiceUuid(String... serviceUuid) {
+            mServerUuid = serviceUuid;
+            return this;
+        }
+
+        /**
+         * 设置广播中 16-bit 服务UUID的服务数据
+         *
+         * @param serviceUuid 16-bit UUID
+         * @param serviceData 服务数据
+         */
+        public Builder addServiceUuidData(String serviceUuid, byte[] serviceData) {
+            if (mServiceUuidData == null) {
+                mServiceUuidData = new HashMap<>();
+            }
+            mServiceUuidData.put(serviceUuid, serviceData);
+            return this;
+        }
+
+        /**
+         * 设置连接后获取的服务
+         *
+         * @param adGattService 连接后获取的服务数据
+         */
+        public Builder addGattService(AdGattService adGattService) {
+            if (mGattServiceMap == null) {
+                mGattServiceMap = new HashMap<>();
+            }
+            BluetoothGattService bluetoothGattService = adGattService.getBluetoothGattService();
+            if (bluetoothGattService != null) {
+                String uuid = bluetoothGattService.getUuid().toString();
+                if (!TextUtils.isEmpty(uuid)) {
+                    mGattServiceMap.put(uuid, adGattService);
+                }
+            }
+            return this;
+        }
+
+        /**
+         * 注意:BLE广播数据分为广播数据和广播回应包数据
+         * 广播数据包最大为:31 byte
+         * 广播回应包最大为:31 byte
+         * 大部分手机广播数据会拼接回应包,所以广播数据为:62 byte
+         */
+        public AdBleValueBean build() {
+            settingsBuilder.setAdvertiseMode(mAdvertiseMode);
+            settingsBuilder.setConnectable(mConnectable);
+            settingsBuilder.setTimeout(mTimeoutMillis);
+            settingsBuilder.setTxPowerLevel(mTxPowerLevel);
+            dataBuilder.setIncludeDeviceName(mIncludeDeviceName);
+            dataBuilder.setIncludeTxPowerLevel(mIncludeTxPowerLevel);
+            if (mManufacturerData!=null){
+                Set<Integer> keySet = mManufacturerData.keySet();
+                for (Integer key : keySet) {
+                    if (key != null) {
+                        byte[] bytes = mManufacturerData.get(key);
+                        if (bytes != null) {
+                            dataBuilder.addManufacturerData(key, bytes);
+                        }
+                    }
+                }
+            }
+
+            if (mServerUuid != null) {
+                for (String uuid : mServerUuid) {
+                    if (uuid != null) {
+                        dataBuilder.addServiceUuid(ParcelUuid.fromString(uuid));
+                    }
+                }
+            }
+            if (mServiceUuidData!=null){
+                Set<String> uuidKey = mServiceUuidData.keySet();
+                for (String uuid : uuidKey) {
+                    if (!TextUtils.isEmpty(uuid)) {
+                        byte[] bytes = mServiceUuidData.get(uuid);
+                        if (bytes != null) {
+                            dataBuilder.addServiceData(ParcelUuid.fromString(uuid), bytes);
+                        }
+                    }
+                }
+            }
+
+            return new AdBleValueBean(settingsBuilder.build(), dataBuilder.build(), mGattServiceMap);
         }
     }
-
-    public void addServer(String serverUuid,Characteristic ){
-
-    }
-
-
-
-
-
-
 
 
 }

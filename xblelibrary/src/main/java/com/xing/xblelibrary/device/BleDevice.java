@@ -9,9 +9,6 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 
-import androidx.annotation.CallSuper;
-import androidx.annotation.RequiresApi;
-
 import com.xing.xblelibrary.config.BleConfig;
 import com.xing.xblelibrary.listener.OnBleMtuListener;
 import com.xing.xblelibrary.listener.OnBleRssiListener;
@@ -24,6 +21,9 @@ import com.xing.xblelibrary.utils.MyBleDeviceUtils;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.UUID;
+
+import androidx.annotation.CallSuper;
+import androidx.annotation.RequiresApi;
 
 /**
  * xing<br>
@@ -59,10 +59,7 @@ public final class BleDevice {
      */
     private LinkedList<SendDataBean> mLinkedList;
     private LinkedList<SendDataBean> mLinkedListNotify;
-    /**
-     * 握手前的发送数据的队列
-     */
-    private LinkedList<SendDataBean> mLinkedListHandshake;
+
     private OnBleSendResultListener mOnBleSendResultListener;
     private onDisConnectedListener mOnDisConnectedListener;
     private OnNotifyDataListener mOnNotifyDataListener;
@@ -81,7 +78,6 @@ public final class BleDevice {
         connectSuccess = true;
         mLinkedList = new LinkedList<>();
         mLinkedListNotify = new LinkedList<>();
-        mLinkedListHandshake = new LinkedList<>();
         init();
     }
 
@@ -364,21 +360,6 @@ public final class BleDevice {
         if (sendDataBean == null)
             return;
         sendCmd(sendDataBean.getHex(), sendDataBean.getUuid(), sendDataBean.getType(), sendDataBean.getUuidService());
-    }
-
-
-    /**
-     * 发送所有数据
-     */
-    private void sendDataAll() {
-        BleLog.i(TAG, "sendDataAll:" + mLinkedListHandshake.size());
-        while (mLinkedListHandshake.size() > 0) {
-            SendDataBean sendDataBean = mLinkedListHandshake.pollLast();
-            if (sendDataBean != null) {
-                sendData(sendDataBean);
-            }
-        }
-
     }
 
 
