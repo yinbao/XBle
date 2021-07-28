@@ -43,6 +43,7 @@ public class AdGattService {
         private Map<String, AdCharacteristic> mCharacteristicMap;
 
         public Builder() {
+            mCharacteristicMap=new HashMap<>();
         }
 
         /**
@@ -51,9 +52,7 @@ public class AdGattService {
          * @param adCharacteristic AdCharacteristic
          */
         public Builder addAdCharacteristic(AdCharacteristic adCharacteristic) {
-            if (mCharacteristicMap == null) {
-                mCharacteristicMap = new HashMap<>();
-            }
+
             String uuidCharacteristic = "";
             if (adCharacteristic != null) {
                 adCharacteristic.getBluetoothGattCharacteristic().getUuid();

@@ -2,6 +2,7 @@ package com.xing.xblelibrary.listener;
 
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGattCharacteristic;
+import android.bluetooth.BluetoothGattDescriptor;
 
 /**
  * xing<br>
@@ -42,11 +43,13 @@ public interface OnCharacteristicRequestListener {
 
 
     /**
-     * notify数据请求
+     * 写描述,一般用于开启通知回调
      *
-     * @param characteristic
      */
-    default void onCharacteristicChangedRequest(BluetoothGattCharacteristic characteristic) {
+    default void onDescriptorWriteRequest(BluetoothDevice device, int requestId,
+                                         BluetoothGattDescriptor descriptor,
+                                         boolean preparedWrite, boolean responseNeeded,
+                                         int offset, byte[] value) {
     }
 
     /**

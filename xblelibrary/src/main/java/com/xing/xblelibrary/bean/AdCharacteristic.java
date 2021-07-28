@@ -73,6 +73,7 @@ public class AdCharacteristic {
         private Map<String,BluetoothGattDescriptor> mDescriptorMap;
 
         public Builder() {
+            mDescriptorMap=new HashMap<>();
         }
 
         public Builder setReadStatus(boolean readStatus) {
@@ -98,9 +99,7 @@ public class AdCharacteristic {
          * @param permissions {@link BluetoothGattCharacteristic#PERMISSION_WRITE,BluetoothGattCharacteristic#PERMISSION_READ}
          */
         public Builder addBluetoothGattDescriptor(String uuidDescriptor, int... permissions) {
-            if (mDescriptorMap == null) {
-                mDescriptorMap = new HashMap<>();
-            }
+
             int permission = 0;
             for (int i : permissions) {
                 permission |= i;

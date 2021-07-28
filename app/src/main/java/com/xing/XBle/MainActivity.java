@@ -37,7 +37,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
-public class MainActivity extends AppCompatActivity implements OnBleScanConnectListener,OnBleAdvertiserListener, View.OnClickListener {
+public class MainActivity extends AppCompatActivity implements OnBleScanConnectListener, OnBleAdvertiserListener, View.OnClickListener {
 
 
     private final int REFRESH_BLE = 1;
@@ -49,8 +49,9 @@ public class MainActivity extends AppCompatActivity implements OnBleScanConnectL
     private ArrayAdapter mListAdapterData;
     private ListView mListViewBle;
     private ListView mListViewData;
-    private Button btn_start_scan,btn_clear,btn_stop_scan,btn_disconnect,btn_start_ad,btn_stop_ad;
+    private Button btn_start_scan, btn_clear, btn_stop_scan, btn_disconnect, btn_start_ad, btn_stop_ad;
     public static String UUID_SERVER_BROADCAST_AILINK = "0000F0A0-0000-1000-8000-00805F9B34FB";
+    public static String UUID_SERVER_BROADCAST_W = "0000F0A1-0000-1000-8000-00805F9B34FB";
 
 
     private Handler mHandler = new Handler(Looper.getMainLooper()) {
@@ -58,7 +59,7 @@ public class MainActivity extends AppCompatActivity implements OnBleScanConnectL
         public void handleMessage(@NonNull Message msg) {
             switch (msg.what) {
                 case REFRESH_BLE:
-                    if (mListAdapterBle!=null){
+                    if (mListAdapterBle != null) {
                         mListAdapterBle.notifyDataSetChanged();
                     }
 
@@ -66,7 +67,7 @@ public class MainActivity extends AppCompatActivity implements OnBleScanConnectL
 
 
                 case REFRESH_DATA:
-                    if (mListAdapterData!=null){
+                    if (mListAdapterData != null) {
                         mListAdapterData.notifyDataSetChanged();
                     }
                     break;
@@ -125,39 +126,41 @@ public class MainActivity extends AppCompatActivity implements OnBleScanConnectL
     }
 
 
+
     @Override
     public void onClick(View v) {
         int id = v.getId();
         if (id == R.id.btn_start_ad) {
             //开始广播
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                AdCharacteristic adCharacteristic=AdCharacteristic.newBuilder()
-                        .setReadStatus(true)
-                        .setWriteStatus(true)
-                        .setNotifyStatus(true)
-                        .build(UUID_SERVER_BROADCAST_AILINK);
-                AdGattService adGattService=AdGattService.newBuilder().addAdCharacteristic(adCharacteristic).build(UUID_SERVER_BROADCAST_AILINK);
+                AdCharacteristic adCharacteristic = AdCharacteristic.newBuilder().setReadStatus(true).setWriteStatus(true).setNotifyStatus(true).build(UUID_SERVER_BROADCAST_W);
+                AdGattService adGattService = AdGattService.newBuilder().addAdCharacteristic(adCharacteristic).build(UUID_SERVER_BROADCAST_AILINK);
 
-                AdBleValueBean adBleValueBean=AdBleValueBean.newBuilder()
-                        .addGattService(adGattService)
-                        .addAdServiceUuid(UUID_SERVER_BROADCAST_AILINK)
-                        .setTimeoutMillis(0)//一直广播
+                AdBleValueBean adBleValueBean = AdBleValueBean.newBuilder()
+                        .addGattService(adGattService)//只做广播可免除
+//                        .setConnectable(false)//是否可连接,默认可连接
+                        .addAdServiceUuid(UUID_SERVER_BROADCAST_AILINK).setTimeoutMillis(0)//一直广播
                         .setIncludeTxPowerLevel(false)//不广播功耗
-                        .addManufacturerData(0x01,new byte[]{0x01,0x02,0x03})
-                        .build();
+                        .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY)//低延迟
+                        .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_ULTRA_LOW)//发射功率极低
+                        .addManufacturerData(0x01, new byte[]{0x01, 0x02, 0x03}).build();
 
-                XBleManager.getInstance().startAdvertiseData(adBleValueBean,MainActivity.this);
+                int adId = XBleManager.getInstance().startAdvertiseData(adBleValueBean, MainActivity.this);
+                mListData.add(0, TimeUtils.getCurrentTimeStr() + "开始广播");
+                mHandler.sendEmptyMessage(REFRESH_DATA);
             }
         } else if (id == R.id.btn_stop_ad) {
             //停止广播
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                XBleManager.getInstance().stopAdvertiseData(MainActivity.this);
+                XBleManager.getInstance().stopAdvertiseData(-1);
+                mListData.add(0, TimeUtils.getCurrentTimeStr() + "停止广播");
+                mHandler.sendEmptyMessage(REFRESH_DATA);
             }
         } else if (id == R.id.btn_start_scan) {
             XBleManager.getInstance().startScan(30000);
         } else if (id == R.id.btn_stop_scan) {
             XBleManager.getInstance().stopScan();
-            mListData.add(0,TimeUtils.getCurrentTimeStr() + "停止扫描");
+            mListData.add(0, TimeUtils.getCurrentTimeStr() + "停止扫描");
             mHandler.sendEmptyMessage(REFRESH_DATA);
         } else if (id == R.id.btn_clear) {
             mListBle.clear();
@@ -183,12 +186,12 @@ public class MainActivity extends AppCompatActivity implements OnBleScanConnectL
     private void initView() {
         mListViewBle = findViewById(R.id.lv_show_ble);
         mListViewData = findViewById(R.id.lv_show_data);
-        btn_start_scan =findViewById(R.id.btn_start_scan);
-        btn_clear=findViewById(R.id.btn_clear);
-        btn_stop_scan=findViewById(R.id.btn_stop_scan);
-        btn_disconnect=findViewById(R.id.btn_disconnect);
-        btn_start_ad=findViewById(R.id.btn_start_ad);
-        btn_stop_ad=findViewById(R.id.btn_stop_ad);
+        btn_start_scan = findViewById(R.id.btn_start_scan);
+        btn_clear = findViewById(R.id.btn_clear);
+        btn_stop_scan = findViewById(R.id.btn_stop_scan);
+        btn_disconnect = findViewById(R.id.btn_disconnect);
+        btn_start_ad = findViewById(R.id.btn_start_ad);
+        btn_stop_ad = findViewById(R.id.btn_stop_ad);
     }
 
 
@@ -266,7 +269,7 @@ public class MainActivity extends AppCompatActivity implements OnBleScanConnectL
     public void onStartScan() {
         //开始扫描
         BleLog.i("开始扫描");
-        mListData.add(0,TimeUtils.getCurrentTimeStr() + "开始扫描");
+        mListData.add(0, TimeUtils.getCurrentTimeStr() + "开始扫描");
         mHandler.sendEmptyMessage(REFRESH_DATA);
     }
 
@@ -284,7 +287,7 @@ public class MainActivity extends AppCompatActivity implements OnBleScanConnectL
     public void onScanTimeOut() {
         //扫描超时,当设置扫描时间为0时将不会触发此方法
         BleLog.i("扫描超时");
-        mListData.add(0,TimeUtils.getCurrentTimeStr() + "扫描超时");
+        mListData.add(0, TimeUtils.getCurrentTimeStr() + "扫描超时");
         mHandler.sendEmptyMessage(REFRESH_DATA);
     }
 
@@ -292,7 +295,7 @@ public class MainActivity extends AppCompatActivity implements OnBleScanConnectL
     public void onScanErr(long time) {
         //扫描异常
         BleLog.i("扫描太频繁,请在" + time + "ms后再进行扫描");
-        mListData.add(0,TimeUtils.getCurrentTimeStr() + "扫描太频繁,请在" + time + "ms后再进行扫描");
+        mListData.add(0, TimeUtils.getCurrentTimeStr() + "扫描太频繁,请在" + time + "ms后再进行扫描");
         mHandler.sendEmptyMessage(REFRESH_DATA);
     }
 
@@ -300,7 +303,7 @@ public class MainActivity extends AppCompatActivity implements OnBleScanConnectL
     public void onConnecting(String mac) {
         //连接中
         BleLog.i("正在连接的设备:" + mac);
-        mListData.add(0,TimeUtils.getCurrentTimeStr() + "正在连接的设备:" + mac);
+        mListData.add(0, TimeUtils.getCurrentTimeStr() + "正在连接的设备:" + mac);
         mHandler.sendEmptyMessage(REFRESH_DATA);
 
     }
@@ -311,7 +314,7 @@ public class MainActivity extends AppCompatActivity implements OnBleScanConnectL
         //code=-1 代表连接超时
         //code=-2 代表获取服务失败
         BleLog.i("连接断开:" + mac + " 错误码:" + code);
-        mListData.add(0,TimeUtils.getCurrentTimeStr() + "连接断开:" + mac + " 错误码:" + code);
+        mListData.add(0, TimeUtils.getCurrentTimeStr() + "连接断开:" + mac + " 错误码:" + code);
         mHandler.sendEmptyMessage(REFRESH_DATA);
     }
 
@@ -327,7 +330,7 @@ public class MainActivity extends AppCompatActivity implements OnBleScanConnectL
     public void onServicesDiscovered(String mac) {
         //连接获取服务成功
         BleLog.i("获取服务成功:" + mac);
-        mListData.add(0,TimeUtils.getCurrentTimeStr() + "获取服务成功:" + mac);
+        mListData.add(0, TimeUtils.getCurrentTimeStr() + "获取服务成功:" + mac);
         mHandler.sendEmptyMessage(REFRESH_DATA);
         BleDevice bleDevice = XBleManager.getInstance().getBleDevice(mac);
         if (bleDevice != null) {
@@ -349,7 +352,7 @@ public class MainActivity extends AppCompatActivity implements OnBleScanConnectL
                 public void onNotifyData(UUID uuid, byte[] data) {
                     //需要setNotify之后,并且ble返回了数据才会触发
                     BleLog.i("ble返回的数据:" + BleStrUtils.byte2HexStr(data));
-                    mListData.add(0,TimeUtils.getCurrentTimeStr() + "Notify:" + uuid.toString() + "\n返回的数据:" + BleStrUtils.byte2HexStr(data));
+                    mListData.add(0, TimeUtils.getCurrentTimeStr() + "Notify:" + uuid.toString() + "\n返回的数据:" + BleStrUtils.byte2HexStr(data));
                     mHandler.sendEmptyMessage(REFRESH_DATA);
                 }
             });
@@ -360,7 +363,7 @@ public class MainActivity extends AppCompatActivity implements OnBleScanConnectL
     public void bleOpen() {
         //蓝牙已开启
         onPermissionsOk();
-        mListData.add(0,TimeUtils.getCurrentTimeStr() + "蓝牙已开启");
+        mListData.add(0, TimeUtils.getCurrentTimeStr() + "蓝牙已开启");
         mHandler.sendEmptyMessage(REFRESH_DATA);
 
     }
@@ -368,37 +371,37 @@ public class MainActivity extends AppCompatActivity implements OnBleScanConnectL
     @Override
     public void bleClose() {
         //蓝牙已关闭
-        mListData.add(0,TimeUtils.getCurrentTimeStr() + "蓝牙已关闭");
+        mListData.add(0, TimeUtils.getCurrentTimeStr() + "蓝牙已关闭");
         mHandler.sendEmptyMessage(REFRESH_DATA);
     }
 
 
     @Override
-    public void onStartSuccess(AdvertiseSettings advertiseSettings) {
-        BleLog.i("广播成功:" + advertiseSettings.toString());
-        mListData.add(0,TimeUtils.getCurrentTimeStr() + "广播成功");
-        mHandler.sendEmptyMessage(REFRESH_DATA);
-    }
-
-
-
-
-    @Override
-    public void onStartFailure(int errorCode) {
-        mListData.add(0,TimeUtils.getCurrentTimeStr() + "广播失败:"+errorCode);
-        mHandler.sendEmptyMessage(REFRESH_DATA);
-    }
-    @Override
-    public void onStopSuccess(AdvertiseSettings advertiseSettings) {
-        BleLog.i("停止广播成功:" + advertiseSettings.toString());
-        mListData.add(0,TimeUtils.getCurrentTimeStr() + "停止广播成功");
+    public void onStartSuccess(int adId,AdvertiseSettings advertiseSettings) {
+        if (advertiseSettings != null)
+            BleLog.i("广播成功:" + advertiseSettings.toString());
+        mListData.add(0, TimeUtils.getCurrentTimeStr() + "广播成功:"+adId);
         mHandler.sendEmptyMessage(REFRESH_DATA);
     }
 
 
     @Override
-    public void onStopFailure(int errorCode) {
-        mListData.add(0,TimeUtils.getCurrentTimeStr() + "停止广播失败:"+errorCode);
+    public void onStartFailure(int adId,int errorCode) {
+        mListData.add(0, TimeUtils.getCurrentTimeStr() + "广播失败:" + errorCode);
+        mHandler.sendEmptyMessage(REFRESH_DATA);
+    }
+
+    @Override
+    public void onStopSuccess(int adId) {
+        BleLog.i("停止广播成功:"+adId);
+        mListData.add(0, TimeUtils.getCurrentTimeStr() + "停止广播成功:"+adId);
+        mHandler.sendEmptyMessage(REFRESH_DATA);
+    }
+
+
+    @Override
+    public void onStopFailure(int adId,int errorCode) {
+        mListData.add(0, TimeUtils.getCurrentTimeStr() + "停止广播失败:" + errorCode);
         mHandler.sendEmptyMessage(REFRESH_DATA);
     }
 }

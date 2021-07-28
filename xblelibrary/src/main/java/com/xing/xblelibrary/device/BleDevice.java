@@ -15,6 +15,7 @@ import com.xing.xblelibrary.listener.OnBleRssiListener;
 import com.xing.xblelibrary.listener.OnBleSendResultListener;
 import com.xing.xblelibrary.listener.OnCharacteristicListener;
 import com.xing.xblelibrary.listener.OnNotifyDataListener;
+import com.xing.xblelibrary.listener.onDisConnectedListener;
 import com.xing.xblelibrary.utils.BleLog;
 import com.xing.xblelibrary.utils.MyBleDeviceUtils;
 
@@ -530,14 +531,7 @@ public final class BleDevice {
         mOnNotifyDataListener = onNotifyDataListener;
     }
 
-    /**
-     * 断开接口通知
-     */
-    public interface onDisConnectedListener {
 
-        void onDisConnected();
-
-    }
 
 
 }

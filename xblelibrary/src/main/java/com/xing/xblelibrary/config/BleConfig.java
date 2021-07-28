@@ -73,4 +73,40 @@ public class BleConfig {
     public static final int SCAN_FAILED_SCANNING_TOO_FREQUENTLY = 6;
 
 
+    /**
+     * 连接过程超时
+     * 连接成功,获取服务超时
+     */
+    public static final int DISCONNECT_CODE_ERR_TIMEOUT=-1;
+    /**
+     * 连接成功,获取服务失败
+     */
+    public static final int DISCONNECT_CODE_ERR_SERVICE_FAIL=-2;
+    /**
+     * 未连接,当前广播不支持连接
+     */
+    public static final int DISCONNECT_CODE_ERR_NO_CONNECT=-3;
+
+
+
+    //------------广播解析相关------------
+    public static final int DATA_TYPE_FLAGS = 0x01;
+    public static final int DATA_TYPE_SERVICE_UUIDS_16_BIT_PARTIAL = 0x02;
+    public static final int DATA_TYPE_SERVICE_UUIDS_16_BIT_COMPLETE = 0x03;
+    public static final int DATA_TYPE_SERVICE_UUIDS_32_BIT_PARTIAL = 0x04;
+    public static final int DATA_TYPE_SERVICE_UUIDS_32_BIT_COMPLETE = 0x05;
+    public static final int DATA_TYPE_SERVICE_UUIDS_128_BIT_PARTIAL = 0x06;
+    public static final int DATA_TYPE_SERVICE_UUIDS_128_BIT_COMPLETE = 0x07;
+    public static final int DATA_TYPE_LOCAL_NAME_SHORT = 0x08;
+    public static final int DATA_TYPE_LOCAL_NAME_COMPLETE = 0x09;
+    public static final int DATA_TYPE_TX_POWER_LEVEL = 0x0A;
+    public static final int DATA_TYPE_SERVICE_DATA_16_BIT = 0x16;
+    public static final int DATA_TYPE_SERVICE_DATA_32_BIT = 0x20;
+    public static final int DATA_TYPE_SERVICE_DATA_128_BIT = 0x21;
+    public static final int DATA_TYPE_SERVICE_SOLICITATION_UUIDS_16_BIT = 0x14;
+    public static final int DATA_TYPE_SERVICE_SOLICITATION_UUIDS_32_BIT = 0x1F;
+    public static final int DATA_TYPE_SERVICE_SOLICITATION_UUIDS_128_BIT = 0x15;
+    public static final int DATA_TYPE_MANUFACTURER_SPECIFIC_DATA = 0xFF;
+
+
 }

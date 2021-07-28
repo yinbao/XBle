@@ -6,6 +6,10 @@ import android.bluetooth.le.AdvertiseSettings;
 import android.os.Build;
 import android.os.ParcelUuid;
 import android.text.TextUtils;
+import android.util.ArrayMap;
+import android.util.SparseArray;
+
+import com.xing.xblelibrary.config.BleConfig;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -31,13 +35,15 @@ public class AdBleValueBean {
     private AdBleValueBean(AdvertiseSettings advertiseSettings, AdvertiseData advertiseData, Map<String, AdGattService> gattServiceMap) {
         mAdvertiseSettings = advertiseSettings;
         mAdvertiseData = advertiseData;
-        Collection<AdGattService> values = gattServiceMap.values();
-        mBluetoothGattServiceList = new ArrayList<>();
-        for (AdGattService value : values) {
-            mBluetoothGattServiceList.add(value.getBluetoothGattService());
+        if (gattServiceMap != null) {
+            Collection<AdGattService> values = gattServiceMap.values();
+            mBluetoothGattServiceList = new ArrayList<>();
+            for (AdGattService value : values) {
+                mBluetoothGattServiceList.add(value.getBluetoothGattService());
+            }
         }
-
     }
+
 
     public List<BluetoothGattService> getBluetoothGattServiceList() {
         return mBluetoothGattServiceList;
@@ -89,7 +95,7 @@ public class AdBleValueBean {
         /**
          * 设置广播的服务uuid
          */
-        private String[] mServerUuid;
+        private List<String> mServerUuid;
         /**
          * 设置广播的服务uuid,内容
          */
@@ -102,14 +108,18 @@ public class AdBleValueBean {
         private Map<String, AdGattService> mGattServiceMap;
 
         public Builder() {
+            mManufacturerData=new HashMap<>();
+            mGattServiceMap=new HashMap<>();
+            mServiceUuidData=new ArrayMap<>();
+            mServerUuid=new ArrayList<>();
             settingsBuilder = new AdvertiseSettings.Builder();
-            mAdvertiseMode=AdvertiseSettings.ADVERTISE_MODE_LOW_POWER;//广播模式: 低功耗,平衡,低延迟
-            mTxPowerLevel=AdvertiseSettings.ADVERTISE_TX_POWER_HIGH;//发射功率级别: 极低,低,中,高
-            mConnectable=true;//能否连接,广播分为可连接广播和不可连接广播
-            mTimeoutMillis=0;
+            mAdvertiseMode = AdvertiseSettings.ADVERTISE_MODE_LOW_POWER;//广播模式: 低功耗,平衡,低延迟
+            mTxPowerLevel = AdvertiseSettings.ADVERTISE_TX_POWER_HIGH;//发射功率级别: 极低,低,中,高
+            mConnectable = true;//能否连接,广播分为可连接广播和不可连接广播
+            mTimeoutMillis = 0;
             dataBuilder = new AdvertiseData.Builder();
-            mIncludeDeviceName=true;//设置广播中是否包含名称
-            mIncludeTxPowerLevel=true;//设置广播中是否包含传输速率
+            mIncludeDeviceName = true;//设置广播中是否包含名称
+            mIncludeTxPowerLevel = true;//设置广播中是否包含传输速率
 //            dataBuilder.addManufacturerData(0,null);//设置自定义厂商数据
 //            dataBuilder.addServiceUuid(null);//设置广播的服务uuid
 //            dataBuilder.addServiceData(null, null);//设置广播的服务uuid,内容
@@ -187,20 +197,22 @@ public class AdBleValueBean {
          * @param manufacturerData 厂商数据
          */
         public Builder addManufacturerData(int manufacturerId, byte[] manufacturerData) {
-            if (mManufacturerData == null) {
-                mManufacturerData = new HashMap<>();
-            }
+
             mManufacturerData.put(manufacturerId, manufacturerData);
             return this;
         }
+
 
         /**
          * 设置广播的uuid
          *
          * @param serviceUuid uuid
          */
-        public Builder addAdServiceUuid(String... serviceUuid) {
-            mServerUuid = serviceUuid;
+        public Builder addAdServiceUuid(String serviceUuid) {
+
+            if (!mServerUuid.contains(serviceUuid)) {
+                mServerUuid.add(serviceUuid);
+            }
             return this;
         }
 
@@ -211,9 +223,7 @@ public class AdBleValueBean {
          * @param serviceData 服务数据
          */
         public Builder addServiceUuidData(String serviceUuid, byte[] serviceData) {
-            if (mServiceUuidData == null) {
-                mServiceUuidData = new HashMap<>();
-            }
+
             mServiceUuidData.put(serviceUuid, serviceData);
             return this;
         }
@@ -224,9 +234,7 @@ public class AdBleValueBean {
          * @param adGattService 连接后获取的服务数据
          */
         public Builder addGattService(AdGattService adGattService) {
-            if (mGattServiceMap == null) {
-                mGattServiceMap = new HashMap<>();
-            }
+
             BluetoothGattService bluetoothGattService = adGattService.getBluetoothGattService();
             if (bluetoothGattService != null) {
                 String uuid = bluetoothGattService.getUuid().toString();
@@ -250,7 +258,7 @@ public class AdBleValueBean {
             settingsBuilder.setTxPowerLevel(mTxPowerLevel);
             dataBuilder.setIncludeDeviceName(mIncludeDeviceName);
             dataBuilder.setIncludeTxPowerLevel(mIncludeTxPowerLevel);
-            if (mManufacturerData!=null){
+            if (mManufacturerData != null) {
                 Set<Integer> keySet = mManufacturerData.keySet();
                 for (Integer key : keySet) {
                     if (key != null) {
@@ -269,7 +277,7 @@ public class AdBleValueBean {
                     }
                 }
             }
-            if (mServiceUuidData!=null){
+            if (mServiceUuidData != null) {
                 Set<String> uuidKey = mServiceUuidData.keySet();
                 for (String uuid : uuidKey) {
                     if (!TextUtils.isEmpty(uuid)) {
@@ -283,8 +291,164 @@ public class AdBleValueBean {
 
             return new AdBleValueBean(settingsBuilder.build(), dataBuilder.build(), mGattServiceMap);
         }
+
+
     }
 
+
+    public static AdBleValueBean parseFromBytes(byte[] scanRecord) {
+        if (scanRecord == null) {
+            return null;
+        }
+
+        int currentPos = 0;
+        int advertiseFlag = -1;
+        List<ParcelUuid> serviceUuids = new ArrayList<ParcelUuid>();
+        List<ParcelUuid> serviceSolicitationUuids = new ArrayList<ParcelUuid>();
+        String localName = null;
+        int txPowerLevel = Integer.MIN_VALUE;
+
+        SparseArray<byte[]> manufacturerData = new SparseArray<byte[]>();
+        Map<ParcelUuid, byte[]> serviceData = new ArrayMap<ParcelUuid, byte[]>();
+
+        try {
+            while (currentPos < scanRecord.length) {
+                // length is unsigned int.
+                int length = scanRecord[currentPos++] & 0xFF;
+                if (length == 0) {
+                    break;
+                }
+                // Note the length includes the length of the field type itself.
+                int dataLength = length - 1;
+                // fieldType is unsigned int.
+                int fieldType = scanRecord[currentPos++] & 0xFF;
+                switch (fieldType) {
+                    case BleConfig.DATA_TYPE_FLAGS:
+                        advertiseFlag = scanRecord[currentPos] & 0xFF;
+                        break;
+                    case BleConfig.DATA_TYPE_SERVICE_UUIDS_16_BIT_PARTIAL:
+                    case BleConfig.DATA_TYPE_SERVICE_UUIDS_16_BIT_COMPLETE:
+                        parseServiceUuid(scanRecord, currentPos, dataLength, BluetoothUuid.UUID_BYTES_16_BIT, serviceUuids);
+                        break;
+                    case BleConfig.DATA_TYPE_SERVICE_UUIDS_32_BIT_PARTIAL:
+                    case BleConfig.DATA_TYPE_SERVICE_UUIDS_32_BIT_COMPLETE:
+                        parseServiceUuid(scanRecord, currentPos, dataLength, BluetoothUuid.UUID_BYTES_32_BIT, serviceUuids);
+                        break;
+                    case BleConfig.DATA_TYPE_SERVICE_UUIDS_128_BIT_PARTIAL:
+                    case BleConfig.DATA_TYPE_SERVICE_UUIDS_128_BIT_COMPLETE:
+                        parseServiceUuid(scanRecord, currentPos, dataLength, BluetoothUuid.UUID_BYTES_128_BIT, serviceUuids);
+                        break;
+                    case BleConfig.DATA_TYPE_SERVICE_SOLICITATION_UUIDS_16_BIT:
+                        parseServiceSolicitationUuid(scanRecord, currentPos, dataLength, BluetoothUuid.UUID_BYTES_16_BIT, serviceSolicitationUuids);
+                        break;
+                    case BleConfig.DATA_TYPE_SERVICE_SOLICITATION_UUIDS_32_BIT:
+                        parseServiceSolicitationUuid(scanRecord, currentPos, dataLength, BluetoothUuid.UUID_BYTES_32_BIT, serviceSolicitationUuids);
+                        break;
+                    case BleConfig.DATA_TYPE_SERVICE_SOLICITATION_UUIDS_128_BIT:
+                        parseServiceSolicitationUuid(scanRecord, currentPos, dataLength, BluetoothUuid.UUID_BYTES_128_BIT, serviceSolicitationUuids);
+                        break;
+                    case BleConfig.DATA_TYPE_LOCAL_NAME_SHORT:
+                    case BleConfig.DATA_TYPE_LOCAL_NAME_COMPLETE:
+                        localName = new String(extractBytes(scanRecord, currentPos, dataLength));
+                        break;
+                    case BleConfig.DATA_TYPE_TX_POWER_LEVEL:
+                        txPowerLevel = scanRecord[currentPos];
+                        break;
+                    case BleConfig.DATA_TYPE_SERVICE_DATA_16_BIT:
+                    case BleConfig.DATA_TYPE_SERVICE_DATA_32_BIT:
+                    case BleConfig.DATA_TYPE_SERVICE_DATA_128_BIT:
+                        int serviceUuidLength = BluetoothUuid.UUID_BYTES_16_BIT;
+                        if (fieldType == BleConfig.DATA_TYPE_SERVICE_DATA_32_BIT) {
+                            serviceUuidLength = BluetoothUuid.UUID_BYTES_32_BIT;
+                        } else if (fieldType == BleConfig.DATA_TYPE_SERVICE_DATA_128_BIT) {
+                            serviceUuidLength = BluetoothUuid.UUID_BYTES_128_BIT;
+                        }
+
+                        byte[] serviceDataUuidBytes = extractBytes(scanRecord, currentPos, serviceUuidLength);
+                        ParcelUuid serviceDataUuid = BluetoothUuid.parseUuidFrom(serviceDataUuidBytes);
+                        byte[] serviceDataArray = extractBytes(scanRecord, currentPos + serviceUuidLength, dataLength - serviceUuidLength);
+                        serviceData.put(serviceDataUuid, serviceDataArray);
+                        break;
+                    case BleConfig.DATA_TYPE_MANUFACTURER_SPECIFIC_DATA:
+                        // The first two bytes of the manufacturer specific data are
+                        // manufacturer ids in little endian.
+                        int manufacturerId = ((scanRecord[currentPos + 1] & 0xFF) << 8) + (scanRecord[currentPos] & 0xFF);
+                        byte[] manufacturerDataBytes = extractBytes(scanRecord, currentPos + 2, dataLength - 2);
+                        manufacturerData.put(manufacturerId, manufacturerDataBytes);
+                        break;
+                    default:
+                        // Just ignore, we don't handle such data type.
+                        break;
+                }
+                currentPos += dataLength;
+            }
+
+            if (serviceUuids.isEmpty()) {
+                serviceUuids = null;
+            }
+
+
+            Builder builder = newBuilder();
+            builder.setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY);
+            builder.setTxPowerLevel(txPowerLevel);
+            builder.setConnectable(true);
+            builder.setIncludeTxPowerLevel(txPowerLevel != Integer.MIN_VALUE);
+            builder.setIncludeDeviceName(localName != null);
+            for (int i = 0; i < manufacturerData.size(); i++) {
+                int key = manufacturerData.keyAt(i);
+                if (key >= 0) {
+                    builder.addManufacturerData(key,manufacturerData.get(key));
+                }
+            }
+            builder.setTimeoutMillis(0);
+            for (ParcelUuid serviceUuid : serviceUuids) {
+                builder.addAdServiceUuid(serviceUuid.toString());
+            }
+
+
+            return builder.build();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+
+    /**
+     * Parse service UUIDs.
+     */
+    private static int parseServiceUuid(byte[] scanRecord, int currentPos, int dataLength, int uuidLength, List<ParcelUuid> serviceUuids) {
+        while (dataLength > 0) {
+            byte[] uuidBytes = extractBytes(scanRecord, currentPos, uuidLength);
+            serviceUuids.add(BluetoothUuid.parseUuidFrom(uuidBytes));
+            dataLength -= uuidLength;
+            currentPos += uuidLength;
+        }
+        return currentPos;
+    }
+
+
+    /**
+     * Helper method to extract bytes from byte array.
+     */
+    private static byte[] extractBytes(byte[] scanRecord, int start, int length) {
+        byte[] bytes = new byte[length];
+        System.arraycopy(scanRecord, start, bytes, 0, length);
+        return bytes;
+    }
+
+
+    /**
+     * Parse service Solicitation UUIDs.
+     */
+    private static int parseServiceSolicitationUuid(byte[] scanRecord, int currentPos, int dataLength, int uuidLength, List<ParcelUuid> serviceSolicitationUuids) {
+        while (dataLength > 0) {
+            byte[] uuidBytes = extractBytes(scanRecord, currentPos, uuidLength);
+            serviceSolicitationUuids.add(BluetoothUuid.parseUuidFrom(uuidBytes));
+            dataLength -= uuidLength;
+            currentPos += uuidLength;
+        }
+        return currentPos;
+    }
 
 }
 

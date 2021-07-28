@@ -1,7 +1,7 @@
 package com.xing.xblelibrary.device;
 
 
-import com.xing.xblelibrary.listener.OnBleSendResultListener;
+import com.xing.xblelibrary.listener.onDisConnectedListener;
 
 import java.util.UUID;
 
@@ -13,17 +13,21 @@ import androidx.annotation.CallSuper;
  * 2021/07/21<br>
  * 设备对象抽象类
  */
-public abstract class BaseBleDeviceData implements  BleDevice.onDisConnectedListener, OnBleSendResultListener {
+public abstract class BaseBleDeviceData implements onDisConnectedListener {
     private static String TAG = BaseBleDeviceData.class.getName();
 
     private BleDevice mBleDevice;
+    private AdBleDevice mAdBleDevice;
 
     public BaseBleDeviceData(BleDevice bleDevice) {
         mBleDevice = bleDevice;
         mBleDevice.setOnDisConnectedListener(this);
-        mBleDevice.setOnBleSendResultListener(this);
     }
 
+    public BaseBleDeviceData(AdBleDevice bleDevice) {
+        mAdBleDevice = bleDevice;
+        mAdBleDevice.setOnDisConnectedListener(this);
+    }
 
 
     /**
@@ -53,6 +57,9 @@ public abstract class BaseBleDeviceData implements  BleDevice.onDisConnectedList
         if (mBleDevice != null) {
             mBleDevice.sendData(sendDataBean);
         }
+        if (mAdBleDevice != null) {
+            mAdBleDevice.sendData(sendDataBean);
+        }
     }
 
     @CallSuper
@@ -60,21 +67,10 @@ public abstract class BaseBleDeviceData implements  BleDevice.onDisConnectedList
         if (mBleDevice != null) {
             mBleDevice.sendDataNow(sendDataBean);
         }
+        if (mAdBleDevice != null) {
+            mAdBleDevice.sendDataNow(sendDataBean);
+        }
     }
 
 
-    @Override
-    public void onReadResult(UUID uuid, boolean result) {
-
-    }
-
-    @Override
-    public void onWriteResult(UUID uuid, boolean result) {
-
-    }
-
-    @Override
-    public void onNotifyResult(UUID uuid, boolean result) {
-
-    }
 }

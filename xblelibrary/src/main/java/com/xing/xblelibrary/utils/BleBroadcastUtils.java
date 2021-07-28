@@ -13,6 +13,8 @@ import java.util.List;
  * 广播解析工具类
  */
 public class BleBroadcastUtils {
+    // The following data type values are assigned by Bluetooth SIG.
+    // For more details refer to Bluetooth 4.1 specification, Volume 3, Part C, Section 18.
     private static final int DATA_TYPE_FLAGS = 0x01;
     private static final int DATA_TYPE_SERVICE_UUIDS_16_BIT_PARTIAL = 0x02;
     private static final int DATA_TYPE_SERVICE_UUIDS_16_BIT_COMPLETE = 0x03;
@@ -26,8 +28,11 @@ public class BleBroadcastUtils {
     private static final int DATA_TYPE_SERVICE_DATA_16_BIT = 0x16;
     private static final int DATA_TYPE_SERVICE_DATA_32_BIT = 0x20;
     private static final int DATA_TYPE_SERVICE_DATA_128_BIT = 0x21;
+    private static final int DATA_TYPE_SERVICE_SOLICITATION_UUIDS_16_BIT = 0x14;
+    private static final int DATA_TYPE_SERVICE_SOLICITATION_UUIDS_32_BIT = 0x1F;
+    private static final int DATA_TYPE_SERVICE_SOLICITATION_UUIDS_128_BIT = 0x15;
     private static final int DATA_TYPE_MANUFACTURER_SPECIFIC_DATA = 0xFF;
-    private static final int DATA_TYPE_MANUFACTURER_SPECIFIC_DATA_MOVE = 0xFE;
+
     private List<byte[]> mManufacturerByte;
     private List<ParcelUuid> mServiceUuids;
 
@@ -36,7 +41,7 @@ public class BleBroadcastUtils {
     }
 
     public BleBroadcastUtils(byte[] scanRecord, int manufacturerId) {
-        mManufacturerByte=new ArrayList<>();
+        mManufacturerByte = new ArrayList<>();
         getBleData(scanRecord, manufacturerId);
     }
 
@@ -57,6 +62,7 @@ public class BleBroadcastUtils {
     public List<ParcelUuid> getServiceUuids() {
         return mServiceUuids;
     }
+
 
     private void getBleData(byte[] scanRecord, int id) {
         int currentPos = 0;
@@ -108,7 +114,7 @@ public class BleBroadcastUtils {
             mManufacturerByte = null;
             e.printStackTrace();
         }
-        if (mServiceUuids!=null&&mServiceUuids.isEmpty()) {
+        if (mServiceUuids != null && mServiceUuids.isEmpty()) {
             mServiceUuids = null;
         }
     }
@@ -124,5 +130,6 @@ public class BleBroadcastUtils {
         }
         return currentPos;
     }
+
 
 }

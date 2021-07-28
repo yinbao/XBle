@@ -1,6 +1,8 @@
 package com.xing.xblelibrary;
 
 import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.le.AdvertiseCallback;
+import android.bluetooth.le.AdvertiseSettings;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -19,6 +21,8 @@ import com.xing.xblelibrary.listener.OnBleScanFilterListener;
 import com.xing.xblelibrary.listener.OnBleStatusListener;
 import com.xing.xblelibrary.server.XBleServer;
 
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
@@ -165,13 +169,14 @@ public class XBleManager {
         if (mOnInitListener != null) {
             mOnInitListener.onInitSuccess();
         }
-        if (mXBleServer!=null){
+        if (mXBleServer != null) {
             mXBleServer.deviceConnectListener();
         }
     }
 
 
     //--------bleService相关方法---------
+
 
     /**
      * 搜索设备
@@ -180,19 +185,8 @@ public class XBleManager {
      * @param scanUUID 扫描过滤的uuid
      */
     public void startScan(long timeOut, UUID... scanUUID) {
-        startScan(timeOut, null, scanUUID);
-    }
-
-    /**
-     * 搜索设备
-     *
-     * @param timeOut  超时时间,ms
-     * @param map      给指定uuid的设备设置cid,vid,pid  <"uuid","cid,vid,pid">
-     * @param scanUUID 扫描过滤的uuid
-     */
-    public void startScan(long timeOut, Map<String, String> map, UUID... scanUUID) {
         if (checkBluetoothServiceStatus()) {
-            mXBleServer.scanLeDevice(timeOut, map, scanUUID);
+            mXBleServer.scanLeDevice(timeOut, scanUUID);
         }
     }
 
@@ -201,13 +195,12 @@ public class XBleManager {
      *
      * @param callback 扫描连接的回调接口
      * @param timeOut  超时时间,ms
-     * @param map      给指定uuid的设备设置cid,vid,pid  <"uuid","cid,vid,pid">
      * @param scanUUID 扫描过滤的uuid
      */
-    public void startScan(OnBleScanConnectListener callback, long timeOut, Map<String, String> map, UUID... scanUUID) {
+    public void startScan(OnBleScanConnectListener callback, long timeOut, UUID... scanUUID) {
         if (checkBluetoothServiceStatus()) {
             setOnBleScanConnectListener(callback);
-            mXBleServer.scanLeDevice(timeOut, map, scanUUID);
+            mXBleServer.scanLeDevice(timeOut, scanUUID);
         }
     }
 
@@ -280,8 +273,6 @@ public class XBleManager {
 
     /**
      * 设备监听,监听指定的mac地址的设备,发现连接成功后马上连接获取操作的对象
-     *
-     * @param mAddress 设备地址,null或者空字符串可以监听所有的地址
      */
     public void deviceConnectListener() {
         if (checkBluetoothServiceStatus()) {
@@ -394,19 +385,107 @@ public class XBleManager {
 
     //----------------广播-------------------
 
+    private int mId = 1;
+    private Map<Integer, OnBleAdvertiser> mAdvertiserMap;
+
+    /**
+     * 广播
+     *
+     * @param adBleValueBean AdBleValueBean
+     * @param listener       OnBleAdvertiserListener
+     * @return 广播ID, 用于关闭广播使用
+     */
     @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
-    public void startAdvertiseData(AdBleValueBean adBleValueBean, OnBleAdvertiserListener listener){
-        if (mXBleServer!=null){
-            mXBleServer.startAdvertiseData(adBleValueBean,listener);
+    public int startAdvertiseData(AdBleValueBean adBleValueBean, OnBleAdvertiserListener listener) {
+        if (mAdvertiserMap == null) {
+            mAdvertiserMap = new HashMap<>();
         }
+        mId++;
+        OnBleAdvertiser onBleAdvertiser = new OnBleAdvertiser(mId,listener);
+        if (mXBleServer != null) {
+            onBleAdvertiser.setStartStatus(true);
+            mXBleServer.startAdvertiseData(adBleValueBean, onBleAdvertiser);
+            mAdvertiserMap.put(mId, onBleAdvertiser);
+        }
+        return mId;
     }
 
 
+    /**
+     * 关闭广播
+     *
+     * @param id 广播id,-1代表关闭所有
+     */
     @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
-    public void stopAdvertiseData(OnBleAdvertiserListener listener){
-        if (mXBleServer!=null){
-            mXBleServer.stopAdvertiseData(listener);
+    public void stopAdvertiseData(int id) {
+        if (mAdvertiserMap == null) {
+            return;
         }
+        if (id > 0) {
+            OnBleAdvertiser onBleAdvertiser = mAdvertiserMap.get(id);
+            if (mXBleServer != null && onBleAdvertiser != null) {
+                onBleAdvertiser.setStartStatus(false);
+                mXBleServer.stopAdvertiseData(onBleAdvertiser);
+                mAdvertiserMap.remove(id);
+            }
+        } else {
+            Collection<OnBleAdvertiser> values = mAdvertiserMap.values();
+            for (OnBleAdvertiser value : values) {
+                value.setStartStatus(false);
+                mXBleServer.stopAdvertiseData(value);
+            }
+            mAdvertiserMap.clear();
+
+        }
+
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+    public static class OnBleAdvertiser extends AdvertiseCallback {
+        private OnBleAdvertiserListener mOnBleAdvertiserListener;
+        /**
+         * 开始广播状态
+         */
+        private boolean startStatus = true;
+        private int mAdId;
+
+
+        public void setAdId(int adId) {
+            mAdId = adId;
+        }
+
+        public void setStartStatus(boolean startStatus) {
+            this.startStatus = startStatus;
+        }
+
+        public OnBleAdvertiser(int adId,OnBleAdvertiserListener onBleAdvertiserListener) {
+            mOnBleAdvertiserListener = onBleAdvertiserListener;
+            setAdId(adId);
+        }
+
+        @Override
+        public void onStartSuccess(AdvertiseSettings settingsInEffect) {
+            super.onStartSuccess(settingsInEffect);
+            if (mOnBleAdvertiserListener != null) {
+                if (startStatus) {
+                    mOnBleAdvertiserListener.onStartSuccess(mAdId,settingsInEffect);
+                } else {
+                    mOnBleAdvertiserListener.onStopSuccess(mAdId);
+                }
+            }
+
+        }
+
+        @Override
+        public void onStartFailure(int errorCode) {
+            super.onStartFailure(errorCode);
+            if (mOnBleAdvertiserListener != null) {
+                if (startStatus) {
+                    mOnBleAdvertiserListener.onStartFailure(mAdId,errorCode);
+                } else {
+                    mOnBleAdvertiserListener.onStopFailure(mAdId,errorCode);
+                }
+            }
+        }
+    }
 }
