@@ -3,7 +3,7 @@ package com.xing.xblelibrary.bean;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattDescriptor;
 
-import com.xing.xblelibrary.config.BleConfig;
+import com.xing.xblelibrary.config.XBleStaticConfig;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -38,7 +38,7 @@ public class AdCharacteristic {
         }
         if (writeStatus) {
             permission |= BluetoothGattCharacteristic.PERMISSION_WRITE;
-            property |= BluetoothGattCharacteristic.PROPERTY_WRITE;
+            property |= BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE;
         }
         if (notifyStatus) {
             permission |= BluetoothGattCharacteristic.PERMISSION_READ;
@@ -46,7 +46,7 @@ public class AdCharacteristic {
         }
         mBluetoothGattCharacteristic = new BluetoothGattCharacteristic(UUID.fromString(characteristicUUID), property, permission);
         if (notifyStatus)
-            mBluetoothGattCharacteristic.addDescriptor(new BluetoothGattDescriptor(BleConfig.UUID_NOTIFY_DESCRIPTOR, BluetoothGattCharacteristic.PERMISSION_WRITE));
+            mBluetoothGattCharacteristic.addDescriptor(new BluetoothGattDescriptor(XBleStaticConfig.UUID_NOTIFY_DESCRIPTOR, BluetoothGattCharacteristic.PERMISSION_WRITE));
         if (descriptorMap!=null) {
             Collection<BluetoothGattDescriptor> values = descriptorMap.values();
             for (BluetoothGattDescriptor value : values) {

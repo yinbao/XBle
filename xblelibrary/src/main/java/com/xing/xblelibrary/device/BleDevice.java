@@ -9,7 +9,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 
-import com.xing.xblelibrary.config.BleConfig;
+import com.xing.xblelibrary.config.XBleStaticConfig;
 import com.xing.xblelibrary.listener.OnBleMtuListener;
 import com.xing.xblelibrary.listener.OnBleRssiListener;
 import com.xing.xblelibrary.listener.OnBleSendResultListener;
@@ -67,7 +67,6 @@ public final class BleDevice {
 
     private OnBleRssiListener mOnBleRssiListener;
     private OnBleMtuListener mOnBleMtuListener;
-
     private OnCharacteristicListener mOnCharacteristicListener;
 
 
@@ -102,15 +101,31 @@ public final class BleDevice {
     }
 
 
+    /**
+     * 获取服务列表
+     * @return List<BluetoothGattService>
+     */
+    public List<BluetoothGattService> getBluetoothGattServiceList(){
+        return mBluetoothGatt.getServices();
+    }
+
+    /**
+     * 获取某个服务下面的特征
+     * @param bleGattService BluetoothGattService
+     * @return List<BluetoothGattCharacteristic>
+     */
+    public List<BluetoothGattCharacteristic> getBluetoothGattCharacteristicList(BluetoothGattService bleGattService){
+        return bleGattService.getCharacteristics();
+    }
+
     private void init() {
         //TODO 可进行所有模块都要进行的初始化操作
-        readRssi();
 
     }
 
 
     public void readRssi() {
-        sendDataNow(new SendDataBean(null, null, BleConfig.RSSI_DATA, null));
+        sendDataNow(new SendDataBean(null, null, XBleStaticConfig.RSSI_DATA, null));
     }
 
 
@@ -154,7 +169,7 @@ public final class BleDevice {
      * 设置通知,有发送队列,不会马上生效,会等待系统回调设置成功后再会设置下一个,一般间隔在100ms左右,与固件性能有关
      */
     private void sendOpenNotify(UUID uuidService, UUID uuidNotify) {
-        mLinkedListNotify.addFirst(new SendDataBean(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE, uuidNotify, BleConfig.NOTICE_DATA, uuidService));
+        mLinkedListNotify.addFirst(new SendDataBean(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE, uuidNotify, XBleStaticConfig.NOTICE_DATA, uuidService));
         if (mLinkedListNotify.size() <= 1) {
             SendDataBean sendDataBean = mLinkedListNotify.getLast();
             sendCmd(sendDataBean.getHex(), sendDataBean.getUuid(), sendDataBean.getType(), sendDataBean
@@ -164,7 +179,7 @@ public final class BleDevice {
     }
 
     public void setCloseNotify(UUID uuidService, UUID uuidNotify) {
-        mLinkedListNotify.addFirst(new SendDataBean(BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE, uuidNotify, BleConfig.NOTICE_DATA, uuidService));
+        mLinkedListNotify.addFirst(new SendDataBean(BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE, uuidNotify, XBleStaticConfig.NOTICE_DATA, uuidService));
         if (mLinkedListNotify.size() <= 1) {
             SendDataBean sendDataBean = mLinkedListNotify.getLast();
             sendCmd(sendDataBean.getHex(), sendDataBean.getUuid(), sendDataBean.getType(), sendDataBean
@@ -364,7 +379,7 @@ public final class BleDevice {
     }
 
 
-    private Handler mHandler = new Handler(Looper.myLooper()) {
+    private final Handler mHandler = new Handler(Looper.myLooper()) {
         @Override
         public void handleMessage(Message msg) {
             if (msg.what == SEND_DATA_KEY) {
@@ -410,30 +425,30 @@ public final class BleDevice {
                         }
                         boolean sendOk = false;
                         switch (type) {
-                            case BleConfig.READ_DATA:
+                            case XBleStaticConfig.READ_DATA:
                                 sendOk = gatt.readCharacteristic(mCharacteristic);
                                 if (mOnBleSendResultListener != null) {
                                     mOnBleSendResultListener.onReadResult(uuid, sendOk);
                                 }
                                 break;
 
-                            case BleConfig.WRITE_DATA:
+                            case XBleStaticConfig.WRITE_DATA:
                                 sendOk = gatt.writeCharacteristic(mCharacteristic);
                                 if (mOnBleSendResultListener != null) {
                                     mOnBleSendResultListener.onWriteResult(uuid, sendOk);
                                 }
                                 break;
 
-                            case BleConfig.RSSI_DATA:
+                            case XBleStaticConfig.RSSI_DATA:
                                 sendOk = gatt.readRemoteRssi();
                                 break;
 
-                            case BleConfig.NOTICE_DATA:
+                            case XBleStaticConfig.NOTICE_DATA:
                                 if ((properties & BluetoothGattCharacteristic.PROPERTY_NOTIFY) != 0x00) {
                                     //支持notify
                                     gatt.setCharacteristicNotification(mCharacteristic, true);
                                     BluetoothGattDescriptor bluetoothGattDescriptor = mCharacteristic
-                                            .getDescriptor(BleConfig.UUID_NOTIFY_DESCRIPTOR);
+                                            .getDescriptor(XBleStaticConfig.UUID_NOTIFY_DESCRIPTOR);
                                     if (bluetoothGattDescriptor != null) {
                                         bluetoothGattDescriptor.setValue(hex);
                                         sendOk = gatt.writeDescriptor(bluetoothGattDescriptor);
@@ -455,17 +470,17 @@ public final class BleDevice {
                                 break;
                         }
                         BleLog.i(TAG, "type:" + type + " UUID=" + uuid + " || " + sendOk);
-                    } else if (type == BleConfig.NOTICE_DATA) {
+                    } else if (type == XBleStaticConfig.NOTICE_DATA) {
                         //不支持的uuid,回调设置下一个
                         descriptorWriteOk(null);
                     }
-                } else if (type == BleConfig.RSSI_DATA) {
+                } else if (type == XBleStaticConfig.RSSI_DATA) {
                     gatt.readRemoteRssi();
-                } else if (type == BleConfig.NOTICE_DATA) {
+                } else if (type == XBleStaticConfig.NOTICE_DATA) {
                     //不支持的uuid,回调设置下一个
                     descriptorWriteOk(null);
                 }
-            } else if (type == BleConfig.NOTICE_DATA) {
+            } else if (type == XBleStaticConfig.NOTICE_DATA) {
                 //不支持的uuid,回调设置下一个
                 descriptorWriteOk(null);
             }

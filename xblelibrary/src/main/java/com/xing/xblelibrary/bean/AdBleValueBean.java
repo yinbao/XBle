@@ -9,7 +9,7 @@ import android.text.TextUtils;
 import android.util.ArrayMap;
 import android.util.SparseArray;
 
-import com.xing.xblelibrary.config.BleConfig;
+import com.xing.xblelibrary.config.XBleStaticConfig;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -296,7 +296,11 @@ public class AdBleValueBean {
     }
 
 
-    public static AdBleValueBean parseFromBytes(byte[] scanRecord) {
+    /**
+     * 通过广播数据生成广播对象
+     * @param scanRecord 设备广播数据
+     */
+    public static AdBleValueBean parseAdBytes(byte[] scanRecord) {
         if (scanRecord == null) {
             return null;
         }
@@ -323,44 +327,44 @@ public class AdBleValueBean {
                 // fieldType is unsigned int.
                 int fieldType = scanRecord[currentPos++] & 0xFF;
                 switch (fieldType) {
-                    case BleConfig.DATA_TYPE_FLAGS:
+                    case XBleStaticConfig.DATA_TYPE_FLAGS:
                         advertiseFlag = scanRecord[currentPos] & 0xFF;
                         break;
-                    case BleConfig.DATA_TYPE_SERVICE_UUIDS_16_BIT_PARTIAL:
-                    case BleConfig.DATA_TYPE_SERVICE_UUIDS_16_BIT_COMPLETE:
+                    case XBleStaticConfig.DATA_TYPE_SERVICE_UUIDS_16_BIT_PARTIAL:
+                    case XBleStaticConfig.DATA_TYPE_SERVICE_UUIDS_16_BIT_COMPLETE:
                         parseServiceUuid(scanRecord, currentPos, dataLength, BluetoothUuid.UUID_BYTES_16_BIT, serviceUuids);
                         break;
-                    case BleConfig.DATA_TYPE_SERVICE_UUIDS_32_BIT_PARTIAL:
-                    case BleConfig.DATA_TYPE_SERVICE_UUIDS_32_BIT_COMPLETE:
+                    case XBleStaticConfig.DATA_TYPE_SERVICE_UUIDS_32_BIT_PARTIAL:
+                    case XBleStaticConfig.DATA_TYPE_SERVICE_UUIDS_32_BIT_COMPLETE:
                         parseServiceUuid(scanRecord, currentPos, dataLength, BluetoothUuid.UUID_BYTES_32_BIT, serviceUuids);
                         break;
-                    case BleConfig.DATA_TYPE_SERVICE_UUIDS_128_BIT_PARTIAL:
-                    case BleConfig.DATA_TYPE_SERVICE_UUIDS_128_BIT_COMPLETE:
+                    case XBleStaticConfig.DATA_TYPE_SERVICE_UUIDS_128_BIT_PARTIAL:
+                    case XBleStaticConfig.DATA_TYPE_SERVICE_UUIDS_128_BIT_COMPLETE:
                         parseServiceUuid(scanRecord, currentPos, dataLength, BluetoothUuid.UUID_BYTES_128_BIT, serviceUuids);
                         break;
-                    case BleConfig.DATA_TYPE_SERVICE_SOLICITATION_UUIDS_16_BIT:
+                    case XBleStaticConfig.DATA_TYPE_SERVICE_SOLICITATION_UUIDS_16_BIT:
                         parseServiceSolicitationUuid(scanRecord, currentPos, dataLength, BluetoothUuid.UUID_BYTES_16_BIT, serviceSolicitationUuids);
                         break;
-                    case BleConfig.DATA_TYPE_SERVICE_SOLICITATION_UUIDS_32_BIT:
+                    case XBleStaticConfig.DATA_TYPE_SERVICE_SOLICITATION_UUIDS_32_BIT:
                         parseServiceSolicitationUuid(scanRecord, currentPos, dataLength, BluetoothUuid.UUID_BYTES_32_BIT, serviceSolicitationUuids);
                         break;
-                    case BleConfig.DATA_TYPE_SERVICE_SOLICITATION_UUIDS_128_BIT:
+                    case XBleStaticConfig.DATA_TYPE_SERVICE_SOLICITATION_UUIDS_128_BIT:
                         parseServiceSolicitationUuid(scanRecord, currentPos, dataLength, BluetoothUuid.UUID_BYTES_128_BIT, serviceSolicitationUuids);
                         break;
-                    case BleConfig.DATA_TYPE_LOCAL_NAME_SHORT:
-                    case BleConfig.DATA_TYPE_LOCAL_NAME_COMPLETE:
+                    case XBleStaticConfig.DATA_TYPE_LOCAL_NAME_SHORT:
+                    case XBleStaticConfig.DATA_TYPE_LOCAL_NAME_COMPLETE:
                         localName = new String(extractBytes(scanRecord, currentPos, dataLength));
                         break;
-                    case BleConfig.DATA_TYPE_TX_POWER_LEVEL:
+                    case XBleStaticConfig.DATA_TYPE_TX_POWER_LEVEL:
                         txPowerLevel = scanRecord[currentPos];
                         break;
-                    case BleConfig.DATA_TYPE_SERVICE_DATA_16_BIT:
-                    case BleConfig.DATA_TYPE_SERVICE_DATA_32_BIT:
-                    case BleConfig.DATA_TYPE_SERVICE_DATA_128_BIT:
+                    case XBleStaticConfig.DATA_TYPE_SERVICE_DATA_16_BIT:
+                    case XBleStaticConfig.DATA_TYPE_SERVICE_DATA_32_BIT:
+                    case XBleStaticConfig.DATA_TYPE_SERVICE_DATA_128_BIT:
                         int serviceUuidLength = BluetoothUuid.UUID_BYTES_16_BIT;
-                        if (fieldType == BleConfig.DATA_TYPE_SERVICE_DATA_32_BIT) {
+                        if (fieldType == XBleStaticConfig.DATA_TYPE_SERVICE_DATA_32_BIT) {
                             serviceUuidLength = BluetoothUuid.UUID_BYTES_32_BIT;
-                        } else if (fieldType == BleConfig.DATA_TYPE_SERVICE_DATA_128_BIT) {
+                        } else if (fieldType == XBleStaticConfig.DATA_TYPE_SERVICE_DATA_128_BIT) {
                             serviceUuidLength = BluetoothUuid.UUID_BYTES_128_BIT;
                         }
 
@@ -369,7 +373,7 @@ public class AdBleValueBean {
                         byte[] serviceDataArray = extractBytes(scanRecord, currentPos + serviceUuidLength, dataLength - serviceUuidLength);
                         serviceData.put(serviceDataUuid, serviceDataArray);
                         break;
-                    case BleConfig.DATA_TYPE_MANUFACTURER_SPECIFIC_DATA:
+                    case XBleStaticConfig.DATA_TYPE_MANUFACTURER_SPECIFIC_DATA:
                         // The first two bytes of the manufacturer specific data are
                         // manufacturer ids in little endian.
                         int manufacturerId = ((scanRecord[currentPos + 1] & 0xFF) << 8) + (scanRecord[currentPos] & 0xFF);
@@ -404,7 +408,6 @@ public class AdBleValueBean {
             for (ParcelUuid serviceUuid : serviceUuids) {
                 builder.addAdServiceUuid(serviceUuid.toString());
             }
-
 
             return builder.build();
         } catch (Exception e) {

@@ -59,6 +59,12 @@
             android:text="停止广播"
             />
 
+        <EditText
+            android:id="@+id/et_ble_name"
+            android:layout_width="100dp"
+            android:layout_height="wrap_content"
+            />
+
 
 
     </LinearLayout>

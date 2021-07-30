@@ -1,7 +1,9 @@
 package com.xing.xblelibrary.device;
 
 
-import com.xing.xblelibrary.config.BleConfig;
+import android.bluetooth.BluetoothDevice;
+
+import com.xing.xblelibrary.config.XBleStaticConfig;
 
 import java.util.UUID;
 
@@ -25,9 +27,9 @@ public class SendDataBean {
     private UUID uuid;
     /**
      * 操作类型
-     * 读{@link BleConfig#READ_DATA}
-     * 写{@link BleConfig#WRITE_DATA}
-     * 信号强度{@link BleConfig#RSSI_DATA}
+     * 读{@link XBleStaticConfig#READ_DATA}
+     * 写{@link XBleStaticConfig#WRITE_DATA}
+     * 信号强度{@link XBleStaticConfig#RSSI_DATA}
      */
     private int type;
 
@@ -40,10 +42,12 @@ public class SendDataBean {
      */
     private UUID uuidService = null;
 
+
+
     /**
      * @param hex         发送的内容
      * @param uuid        需要操作的特征uuid
-     * @param type        操作类型 {@link BleConfig#READ_DATA,BleConfig#WRITE_DATA,BleConfig#RSSI_DATA}
+     * @param type        操作类型 {@link XBleStaticConfig#READ_DATA, XBleStaticConfig#WRITE_DATA, XBleStaticConfig#RSSI_DATA}
      * @param uuidService 服务uuid
      */
     public SendDataBean(byte[] hex, UUID uuid, int type, UUID uuidService) {
@@ -102,4 +106,6 @@ public class SendDataBean {
     public void setTop(boolean top) {
         mTop = top;
     }
+
+
 }

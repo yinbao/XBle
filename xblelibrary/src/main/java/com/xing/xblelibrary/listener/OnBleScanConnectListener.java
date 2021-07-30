@@ -32,10 +32,7 @@ public interface OnBleScanConnectListener extends OnBleConnectListener {
      */
     default void onScanErr(long time){}
 
-    /**
-     * 正在连接
-     */
-   default void onConnecting(String mac){}
+
 
 
 }

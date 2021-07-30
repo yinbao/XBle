@@ -37,7 +37,8 @@ import android.os.ParcelUuid;
 import com.xing.xblelibrary.XBleManager;
 import com.xing.xblelibrary.bean.AdBleValueBean;
 import com.xing.xblelibrary.bean.BleValueBean;
-import com.xing.xblelibrary.config.BleConfig;
+import com.xing.xblelibrary.config.XBleConfig;
+import com.xing.xblelibrary.config.XBleStaticConfig;
 import com.xing.xblelibrary.device.AdBleDevice;
 import com.xing.xblelibrary.device.BleDevice;
 import com.xing.xblelibrary.listener.BleConnectListenerIm;
@@ -132,7 +133,8 @@ public class XBleServer extends Service {
     /**
      * 连接后的蓝牙对象
      */
-    private volatile Map<String, BleDevice> mBleObjectMap;
+    private volatile Map<String, BleDevice> mBleObjectMap = new HashMap<>();
+    private volatile Map<String, AdBleDevice> mAdBleObjectMap = new HashMap<>();
 
     /**
      * 需要过滤的uuid
@@ -142,6 +144,10 @@ public class XBleServer extends Service {
      * 搜索的时间,默认一直扫描
      */
     private long mTimeOut = 0;
+    /**
+     * 最大连接数
+     */
+    private int connectMax = 7;
 
     private Handler mHandler = new Handler(Looper.myLooper()) {
 
@@ -207,9 +213,9 @@ public class XBleServer extends Service {
                         gattOld = null;
                         runOnMainThread(() -> {
                             if (mBleScanConnectListener != null) {
-                                mBleScanConnectListener.onDisConnected(address, BleConfig.DISCONNECT_CODE_ERR_TIMEOUT);
+                                mBleScanConnectListener.onDisConnected(address, XBleStaticConfig.DISCONNECT_CODE_ERR_TIMEOUT);
                             }
-                            BleConnectListenerIm.getInstance().onDisConnected(mBleScanConnectListener, address, BleConfig.DISCONNECT_CODE_ERR_TIMEOUT);
+                            BleConnectListenerIm.getInstance().onDisConnected(mBleScanConnectListener, address, XBleStaticConfig.DISCONNECT_CODE_ERR_TIMEOUT);
                         });
                     } else {
                         BleLog.e(TAG, "蓝牙连接超时:mConnectGatt=null");
@@ -335,9 +341,11 @@ public class XBleServer extends Service {
             return;
         }
         mBluMainService = this;
-        mBleObjectMap = new HashMap<>();
+        mBleObjectMap.clear();
         mGattCallback = new MyBluetoothGattCallback();
+        connectMax = XBleConfig.getInstance().getConnectMax();
         bleState();
+        deviceConnectListener();
     }
 
     //------------------------搜索设备-----------------------------------
@@ -621,9 +629,9 @@ public class XBleServer extends Service {
         if (!connectable) {
             runOnMainThread(() -> {
                 if (mBleScanConnectListener != null) {
-                    mBleScanConnectListener.onDisConnected(address, BleConfig.DISCONNECT_CODE_ERR_NO_CONNECT);
+                    mBleScanConnectListener.onDisConnected(address, XBleStaticConfig.DISCONNECT_CODE_ERR_NO_CONNECT);
                 }
-                BleConnectListenerIm.getInstance().onDisConnected(mBleScanConnectListener, address, BleConfig.DISCONNECT_CODE_ERR_NO_CONNECT);
+                BleConnectListenerIm.getInstance().onDisConnected(mBleScanConnectListener, address, XBleStaticConfig.DISCONNECT_CODE_ERR_NO_CONNECT);
             });
             return;
         }
@@ -639,22 +647,17 @@ public class XBleServer extends Service {
             e.printStackTrace();
             return;
         }
-        if (mBleObjectMap.size() > 5) {
-            //连接超过5个就断开所有的
-            disconnectAll();
+        List<BluetoothDevice> connectList = getSystemConnectDevice();
+        if (connectList.size() >= connectMax) {
+            runOnMainThread(() -> {
+                if (mBleScanConnectListener != null) {
+                    mBleScanConnectListener.onConnectMaxErr(connectList);
+                }
+                BleConnectListenerIm.getInstance().onConnectMaxErr(mBleScanConnectListener, connectList);
+            });
+            return;
         }
 
-//        int connectionState = mBleManager.getConnectionState(device, BluetoothProfile.GATT);
-//        if (connectionState == BluetoothProfile.STATE_CONNECTED) {
-//            //设备已连接
-//            mBleManager.openGattServer(mBluMainService, new BluetoothGattServerCallback() {//BluetoothGattCallback
-//                @Override
-//                public void onConnectionStateChange(BluetoothDevice device, int status, int newState) {
-//                    super.onConnectionStateChange(device, status, newState);
-//
-//                }
-//            });
-//        }
         mConnectGatt = device.connectGatt(mBluMainService, false, mGattCallback);//连接操作
         runOnMainThread(() -> {
             if (mBleScanConnectListener != null) {
@@ -813,7 +816,7 @@ public class XBleServer extends Service {
                 BleLog.e(TAG, "连接失败:服务读取失败:");
 
                 String mac = gatt.getDevice().getAddress();
-                disconnect(mac, BleConfig.DISCONNECT_CODE_ERR_SERVICE_FAIL, gatt);
+                disconnect(mac, XBleStaticConfig.DISCONNECT_CODE_ERR_SERVICE_FAIL, gatt);
                 gatt.disconnect();
                 gatt.close();
                 MyBleDeviceUtils.refreshDeviceCache(gatt);
@@ -1116,6 +1119,45 @@ public class XBleServer extends Service {
     }
 
 
+    /**
+     * 检测系统已经连接的对象并自动连接保存为BleDevice对象
+     */
+    public void autoConnectSystemBle() {
+        List<BluetoothDevice> connectedDevices = mBleManager.getConnectedDevices(BluetoothProfile.GATT);
+        for (BluetoothDevice connectedDevice : connectedDevices) {
+            String address = connectedDevice.getAddress();
+            BleDevice bleDevice = mBleObjectMap.get(address);
+            if (bleDevice != null) {
+                continue;
+            }
+//            BleLog.i("系统已连接,XBle自动连接创建BleDevice对象"+address);
+            connectedDevice.connectGatt(this, false, new BluetoothGattCallback() {
+                @Override
+                public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
+                    super.onConnectionStateChange(gatt, status, newState);
+                    if (newState == BluetoothProfile.STATE_CONNECTED) {
+                        runOnMainThread(() -> {
+                            String mac = gatt.getDevice().getAddress().toUpperCase();
+//                            BleLog.i("监听系统连接成功:" + mac);
+                            synchronized (mBleObjectMap) {
+                                if (mBleObjectMap.containsKey(mac)) {
+                                    BleDevice mConnectBleObject = mBleObjectMap.get(mac);
+                                    if (mConnectBleObject != null) {
+                                        mConnectBleObject.disconnect(false);
+                                    }
+                                }
+                                BleDevice mDevice = new BleDevice(gatt, mac);
+                                mBleObjectMap.put(mac, mDevice);
+
+                            }
+                        });
+                    }
+                }
+            });
+        }
+    }
+
+
 //--------------------------------BLE广播 start-------------------------------------------
 
 
@@ -1135,7 +1177,7 @@ public class XBleServer extends Service {
             return;
         }
         bluetoothLeAdvertiser.startAdvertising(adBleValueBean.getAdvertiseSettings(), adBleValueBean.getAdvertiseData(), listener);
-        if (adBleValueBean.getAdvertiseSettings().isConnectable()){
+        if (adBleValueBean.getAdvertiseSettings().isConnectable()) {
             List<BluetoothGattService> bluetoothGattServiceList = adBleValueBean.getBluetoothGattServiceList();
             mBluetoothGattServer.clearServices();
             if (bluetoothGattServiceList != null) {
@@ -1164,16 +1206,32 @@ public class XBleServer extends Service {
         }
     }
 
+
+    /**
+     * 获取系统已连接的设备,包括其他APP连接的设备
+     */
+    public List<BluetoothDevice> getSystemConnectDevice() {
+        return mBleManager.getConnectedDevices(BluetoothProfile.GATT);
+    }
+
     /**
      * 监听连接的蓝牙总线服务
      */
     private BluetoothGattServer mBluetoothGattServer;
-    private AdBleDevice mAdBleDevice = null;
+
+    /**
+     * 自动监听
+     */
+    private volatile boolean mAutoMonitorSystemConnectBle = false;
+
+    public void setAutoMonitorSystemConnectBle(boolean autoMonitorSystemConnectBle) {
+        mAutoMonitorSystemConnectBle = autoMonitorSystemConnectBle;
+    }
 
     /**
      * 系统ble连接监听,监听指定的mac地址的设备,发现连接成功后马上连接获取操作的对象
      */
-    public void deviceConnectListener() {
+    private void deviceConnectListener() {
         //设备已连接
         mBluetoothGattServer = mBleManager.openGattServer(this, new BluetoothGattServerCallback() {
             @Override
@@ -1182,7 +1240,7 @@ public class XBleServer extends Service {
                 //连接成功
                 if (newState == BluetoothProfile.STATE_CONNECTED) {
                     //系统监听到连接成功
-                    if (mConnectGatt == null) {
+                    if (mConnectGatt == null && mAutoMonitorSystemConnectBle) {
                         //当前不在连接状态
                         String address = device.getAddress();
                         connectDevice(address);//手机作为中央,去连接外围设备
@@ -1203,12 +1261,9 @@ public class XBleServer extends Service {
             @Override
             public void onCharacteristicReadRequest(BluetoothDevice device, int requestId, int offset, BluetoothGattCharacteristic characteristic) {
                 super.onCharacteristicReadRequest(device, requestId, offset, characteristic);
-                if (mAdBleDevice==null){
-                    mAdBleDevice=new AdBleDevice(device,mBluetoothGattServer);
-                }
-                if (mAdBleDevice != null) {
-                    mAdBleDevice.onCharacteristicReadRequest(device, requestId, offset, characteristic);
-                }
+                BleLog.i("手机作为外围:onCharacteristicReadRequest");
+                AdBleDevice adBleDevice = newAdBleDevice(device);
+                adBleDevice.onCharacteristicReadRequest(device, requestId, offset, characteristic);
 
 
             }
@@ -1217,12 +1272,9 @@ public class XBleServer extends Service {
             public void onCharacteristicWriteRequest(BluetoothDevice device, int requestId, BluetoothGattCharacteristic characteristic, boolean preparedWrite, boolean responseNeeded, int offset,
                                                      byte[] value) {
                 super.onCharacteristicWriteRequest(device, requestId, characteristic, preparedWrite, responseNeeded, offset, value);
-                if (mAdBleDevice==null){
-                    mAdBleDevice=new AdBleDevice(device,mBluetoothGattServer);
-                }
-                if (mAdBleDevice != null) {
-                    mAdBleDevice.onCharacteristicWriteRequest(device, requestId, characteristic, preparedWrite, responseNeeded, offset, value);
-                }
+                BleLog.i("手机作为外围:onCharacteristicWriteRequest:" + device.getAddress());
+                AdBleDevice adBleDevice = newAdBleDevice(device);
+                adBleDevice.onCharacteristicWriteRequest(device, requestId, characteristic, preparedWrite, responseNeeded, offset, value);
                 //写回复
 //                mBluetoothGattServer.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, value);
 
@@ -1232,9 +1284,8 @@ public class XBleServer extends Service {
             @Override
             public void onDescriptorReadRequest(BluetoothDevice device, int requestId, int offset, BluetoothGattDescriptor descriptor) {
                 super.onDescriptorReadRequest(device, requestId, offset, descriptor);
-                if (mAdBleDevice==null){
-                    mAdBleDevice=new AdBleDevice(device,mBluetoothGattServer);
-                }
+                BleLog.i("手机作为外围:onDescriptorReadRequest");
+                AdBleDevice adBleDevice = newAdBleDevice(device);
                 //描述被读取。当回复相应成功后
                 mBluetoothGattServer.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, null);
             }
@@ -1242,42 +1293,56 @@ public class XBleServer extends Service {
             @Override
             public void onDescriptorWriteRequest(BluetoothDevice device, int requestId, BluetoothGattDescriptor descriptor, boolean preparedWrite, boolean responseNeeded, int offset, byte[] value) {
                 super.onDescriptorWriteRequest(device, requestId, descriptor, preparedWrite, responseNeeded, offset, value);
-                if (mAdBleDevice==null){
-                    mAdBleDevice=new AdBleDevice(device,mBluetoothGattServer);
-                }
-                mAdBleDevice.onDescriptorWriteRequest(device, requestId, descriptor, preparedWrite, responseNeeded, offset, value);
+                BleLog.i("手机作为外围:onDescriptorWriteRequest");
+                AdBleDevice adBleDevice = newAdBleDevice(device);
+                mBluetoothGattServer.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, null);
+                adBleDevice.onDescriptorWriteRequest(device, requestId, descriptor, preparedWrite, responseNeeded, offset, value);
             }
 
             @Override
             public void onExecuteWrite(BluetoothDevice device, int requestId, boolean execute) {
                 super.onExecuteWrite(device, requestId, execute);
-                if (mAdBleDevice==null){
-                    mAdBleDevice=new AdBleDevice(device,mBluetoothGattServer);
-                }
+                BleLog.i("手机作为外围:onExecuteWrite");
+                AdBleDevice adBleDevice = newAdBleDevice(device);
             }
 
             @Override
             public void onNotificationSent(BluetoothDevice device, int status) {
                 super.onNotificationSent(device, status);
-                if (mAdBleDevice==null){
-                    mAdBleDevice=new AdBleDevice(device,mBluetoothGattServer);
-                }
+                BleLog.i("手机作为外围:onNotificationSent:" + status);
+                AdBleDevice adBleDevice = newAdBleDevice(device);
+                adBleDevice.onNotificationSent(device,status);
             }
 
             @Override
             public void onMtuChanged(BluetoothDevice device, int mtu) {
                 super.onMtuChanged(device, mtu);
-                if (mAdBleDevice==null){
-                    mAdBleDevice=new AdBleDevice(device,mBluetoothGattServer);
-                }
-                if (mAdBleDevice != null) {
-                    mAdBleDevice.onMtuChangedRequest(device, mtu);
-                }
+                BleLog.i("手机作为外围:onMtuChanged");
+                AdBleDevice adBleDevice = newAdBleDevice(device);
+                adBleDevice.onMtuChangedRequest(device, mtu);
             }
 
 
         });
 
+
+    }
+
+
+    /**
+     * 获取AdBleDevice对象
+     * @param device BluetoothDevice
+     * @return AdBleDevice
+     */
+    private synchronized AdBleDevice newAdBleDevice(BluetoothDevice device) {
+        String address = device.getAddress();
+        AdBleDevice adBleDevice1 = mAdBleObjectMap.get(address);
+        if (adBleDevice1 == null) {
+            AdBleDevice adBleDevice = new AdBleDevice(device, mBluetoothGattServer);
+            mAdBleObjectMap.put(address, adBleDevice);
+            return adBleDevice;
+        }
+        return adBleDevice1;
 
     }
 

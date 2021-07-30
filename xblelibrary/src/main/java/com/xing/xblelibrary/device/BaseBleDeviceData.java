@@ -19,6 +19,7 @@ public abstract class BaseBleDeviceData implements onDisConnectedListener {
     private BleDevice mBleDevice;
     private AdBleDevice mAdBleDevice;
 
+
     public BaseBleDeviceData(BleDevice bleDevice) {
         mBleDevice = bleDevice;
         mBleDevice.setOnDisConnectedListener(this);

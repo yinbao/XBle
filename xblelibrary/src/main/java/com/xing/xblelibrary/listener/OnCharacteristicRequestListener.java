@@ -53,6 +53,12 @@ public interface OnCharacteristicRequestListener {
     }
 
     /**
+     * 发送消息结果回调
+     */
+    default  void onNotificationSent(BluetoothDevice device, int status) {
+    }
+
+    /**
      * Mtu请求
      *
      * @param device

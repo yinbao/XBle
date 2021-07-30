@@ -6,8 +6,11 @@ import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothGattServer;
 import android.bluetooth.BluetoothGattService;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.Message;
 
-import com.xing.xblelibrary.config.BleConfig;
+import com.xing.xblelibrary.config.XBleStaticConfig;
 import com.xing.xblelibrary.listener.OnCharacteristicRequestListener;
 import com.xing.xblelibrary.listener.onDisConnectedListener;
 import com.xing.xblelibrary.utils.BleLog;
@@ -29,6 +32,7 @@ public final class AdBleDevice implements OnCharacteristicRequestListener {
 
     private final int SEND_DATA_KEY = 1;
     private int mSendDataInterval = 10;
+
     private BluetoothGattServer mBluetoothGattServer;
     private BluetoothDevice mBluetoothDevice;
     /**
@@ -52,13 +56,15 @@ public final class AdBleDevice implements OnCharacteristicRequestListener {
      * 发送数据的队列
      */
     private LinkedList<SendDataBean> mLinkedList;
-
+    /**
+     * 是否允许发送下一个消息
+     */
+    private volatile boolean mSendNextMessage = true;
     private onDisConnectedListener mOnDisConnectedListener;
 
 
-
     public AdBleDevice(BluetoothDevice device, BluetoothGattServer bluetoothGattServer) {
-        mBluetoothDevice=device;
+        mBluetoothDevice = device;
         mBluetoothGattServer = bluetoothGattServer;
         this.mac = device.getAddress();
         this.mName = device.getName();
@@ -72,8 +78,6 @@ public final class AdBleDevice implements OnCharacteristicRequestListener {
     private void init() {
         //TODO 可进行所有模块都要进行的初始化操作
     }
-
-
 
 
     public boolean isConnectSuccess() {
@@ -134,8 +138,12 @@ public final class AdBleDevice implements OnCharacteristicRequestListener {
     public void onCharacteristicWriteRequest(BluetoothDevice device, int requestId, BluetoothGattCharacteristic characteristic, boolean preparedWrite, boolean responseNeeded, int offset,
                                              byte[] value) {
         //通知
-        characteristic.setValue(value);
-        mBluetoothGattServer.notifyCharacteristicChanged(device, characteristic, false);
+//        characteristic.setValue(value);
+//        mBluetoothGattServer.notifyCharacteristicChanged(device, characteristic, false);
+        sendData(new SendDataBean(new byte[]{1}, characteristic.getUuid(), XBleStaticConfig.WRITE_DATA, characteristic.getService().getUuid()));
+        sendData(new SendDataBean(new byte[]{2}, characteristic.getUuid(), XBleStaticConfig.WRITE_DATA, characteristic.getService().getUuid()));
+        sendData(new SendDataBean(new byte[]{3}, characteristic.getUuid(), XBleStaticConfig.WRITE_DATA, characteristic.getService().getUuid()));
+        sendData(new SendDataBean(new byte[]{1, 2, 3}, characteristic.getUuid(), XBleStaticConfig.WRITE_DATA, characteristic.getService().getUuid()));
     }
 
     @Override
@@ -149,7 +157,12 @@ public final class AdBleDevice implements OnCharacteristicRequestListener {
     }
 
 
-
+    @Override
+    public void onNotificationSent(BluetoothDevice device, int status) {
+        if (status == BluetoothGatt.GATT_SUCCESS) {
+            mSendNextMessage = true;
+        }
+    }
 
     /**
      * 发送数据
@@ -165,8 +178,29 @@ public final class AdBleDevice implements OnCharacteristicRequestListener {
         } else {
             mLinkedList.addFirst(sendDataBean);
         }
-
+        if (mLinkedList.size() <= 1) {
+            mHandler.removeMessages(SEND_DATA_KEY);
+            mHandler.sendEmptyMessageDelayed(SEND_DATA_KEY, mSendDataInterval);
+        }
     }
+
+
+    private final Handler mHandler = new Handler(Looper.getMainLooper()) {
+        @Override
+        public void handleMessage(Message msg) {
+            if (msg.what == SEND_DATA_KEY) {
+                if (mLinkedList.size() > 0) {
+                    SendDataBean sendDataBean = mLinkedList.pollLast();
+                    if (sendDataBean != null) {
+                        sendCmd(sendDataBean.getHex(), sendDataBean.getUuid(), sendDataBean.getType(), sendDataBean.getUuidService());
+                        mHandler.sendEmptyMessageDelayed(SEND_DATA_KEY, mSendDataInterval);//设置间隔,避免发送失败
+                    } else {
+                        mHandler.sendEmptyMessage(SEND_DATA_KEY);//没有需要发送的数据,不需要间隔
+                    }
+                }
+            }
+        }
+    };
 
 
     /**
@@ -194,18 +228,19 @@ public final class AdBleDevice implements OnCharacteristicRequestListener {
             BluetoothGattService mGattService = mBluetoothGattServer.getService(uuidService);
             if (mGattService != null && uuid != null) {
                 BluetoothGattCharacteristic mCharacteristic = MyBleDeviceUtils.getServiceWrite(mGattService, uuid);
-                if (mCharacteristic != null) {
+                if (mCharacteristic != null && mSendNextMessage) {
                     if (hex != null) {
                         mCharacteristic.setValue(hex);
                     }
                     mCharacteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
                     boolean sendOk = false;
                     switch (type) {
-                        case BleConfig.READ_DATA:
+                        case XBleStaticConfig.READ_DATA:
 //                            sendOk=mBluetoothGattServer.sendResponse(mBluetoothDevice, requestId, BluetoothGatt.GATT_SUCCESS, offset,mCharacteristic.getValue());
                             break;
 
-                        case BleConfig.WRITE_DATA:
+                        case XBleStaticConfig.WRITE_DATA:
+                            mSendNextMessage = false;
                             //通知
                             sendOk = mBluetoothGattServer.notifyCharacteristicChanged(mBluetoothDevice, mCharacteristic, false);
                             break;
@@ -229,13 +264,6 @@ public final class AdBleDevice implements OnCharacteristicRequestListener {
         return mName;
     }
 
-
-
-
-    public BluetoothGattServer getBluetoothGattServer() {
-        return mBluetoothGattServer;
-    }
-
     /**
      * 修改发送队列的间隔
      * 默认是10ms
@@ -246,14 +274,22 @@ public final class AdBleDevice implements OnCharacteristicRequestListener {
         mSendDataInterval = interval;
     }
 
+
+    public BluetoothDevice getBluetoothDevice() {
+        return mBluetoothDevice;
+    }
+
+    public BluetoothGattServer getBluetoothGattServer() {
+        return mBluetoothGattServer;
+    }
+
+
     //---------------
 
 
     public void setOnDisConnectedListener(onDisConnectedListener onDisConnectedListener) {
         mOnDisConnectedListener = onDisConnectedListener;
     }
-
-
 
 
 }

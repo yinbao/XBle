@@ -8,7 +8,8 @@ import java.util.UUID;
  * 2021/07/21<br>
  * 蓝牙参数配置,uuid等信息
  */
-public class BleConfig {
+public class XBleStaticConfig {
+
 
     //-------------操作------------
     /**

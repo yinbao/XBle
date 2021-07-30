@@ -1,5 +1,9 @@
 package com.xing.xblelibrary.listener;
 
+import android.bluetooth.BluetoothDevice;
+
+import java.util.List;
+
 /**
  * 功能描述:  Ble连接状态的实现类
  * 1,连接断开
@@ -63,6 +67,20 @@ public class BleConnectListenerIm extends BaseListenerIm<OnBleConnectListener> {
                 if (observer != null && observer != callback)
                     if (observer instanceof OnBleScanConnectListener) {
                         ((OnBleScanConnectListener) observer).onConnecting(mac);
+                    }
+
+            }
+        }
+    }
+    /**
+     * 正在连接
+     */
+    public void onConnectMaxErr(OnBleConnectListener callback, List<BluetoothDevice> list) {
+        synchronized (OnBleConnectListener.class) {
+            for (OnBleConnectListener observer : listListener) {
+                if (observer != null && observer != callback)
+                    if (observer instanceof OnBleScanConnectListener) {
+                        ((OnBleScanConnectListener) observer).onConnectMaxErr(list);
                     }
 
             }

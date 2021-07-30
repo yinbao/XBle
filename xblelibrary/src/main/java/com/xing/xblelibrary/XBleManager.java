@@ -12,6 +12,7 @@ import android.os.IBinder;
 
 import com.xing.xblelibrary.bean.AdBleValueBean;
 import com.xing.xblelibrary.bean.BleValueBean;
+import com.xing.xblelibrary.config.XBleConfig;
 import com.xing.xblelibrary.device.BleDevice;
 import com.xing.xblelibrary.listener.BleConnectListenerIm;
 import com.xing.xblelibrary.listener.OnBleAdvertiserListener;
@@ -21,8 +22,10 @@ import com.xing.xblelibrary.listener.OnBleScanFilterListener;
 import com.xing.xblelibrary.listener.OnBleStatusListener;
 import com.xing.xblelibrary.server.XBleServer;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -44,8 +47,17 @@ public class XBleManager {
      */
     private Intent bindIntent;
     private onInitListener mOnInitListener;
-
+    private static XBleConfig mXBleConfig = XBleConfig.getInstance();
     private static XBleManager sXBleManager;
+
+    /**
+     * 获取配置对象，可进行相关配置的修改
+     *
+     * @return XBleConfig
+     */
+    public static XBleConfig getXBleConfig() {
+        return mXBleConfig;
+    }
 
     public static synchronized XBleManager getInstance() {
         if (sXBleManager == null) {
@@ -170,8 +182,25 @@ public class XBleManager {
             mOnInitListener.onInitSuccess();
         }
         if (mXBleServer != null) {
-            mXBleServer.deviceConnectListener();
+            boolean autoConnectSystemBle = XBleConfig.getInstance().isAutoConnectSystemBle();
+            if (autoConnectSystemBle){
+                mXBleServer.autoConnectSystemBle();
+            }
+            mXBleServer.setAutoMonitorSystemConnectBle(XBleConfig.getInstance().isAutoMonitorSystemConnectBle());
         }
+    }
+
+
+    /**
+     * 获取所有的连接对象
+     *
+     * @return List<BleDevice>
+     */
+    public List<BleDevice> getBleDeviceAll() {
+        if (mXBleServer != null) {
+            return mXBleServer.getBleDeviceAll();
+        }
+        return new ArrayList<>();
     }
 
 
@@ -271,14 +300,7 @@ public class XBleManager {
         }
     }
 
-    /**
-     * 设备监听,监听指定的mac地址的设备,发现连接成功后马上连接获取操作的对象
-     */
-    public void deviceConnectListener() {
-        if (checkBluetoothServiceStatus()) {
-            mXBleServer.deviceConnectListener();
-        }
-    }
+
 
     /**
      * 设置扫描过滤回调接口
@@ -401,7 +423,7 @@ public class XBleManager {
             mAdvertiserMap = new HashMap<>();
         }
         mId++;
-        OnBleAdvertiser onBleAdvertiser = new OnBleAdvertiser(mId,listener);
+        OnBleAdvertiser onBleAdvertiser = new OnBleAdvertiser(mId, listener);
         if (mXBleServer != null) {
             onBleAdvertiser.setStartStatus(true);
             mXBleServer.startAdvertiseData(adBleValueBean, onBleAdvertiser);
@@ -458,7 +480,7 @@ public class XBleManager {
             this.startStatus = startStatus;
         }
 
-        public OnBleAdvertiser(int adId,OnBleAdvertiserListener onBleAdvertiserListener) {
+        public OnBleAdvertiser(int adId, OnBleAdvertiserListener onBleAdvertiserListener) {
             mOnBleAdvertiserListener = onBleAdvertiserListener;
             setAdId(adId);
         }
@@ -468,7 +490,7 @@ public class XBleManager {
             super.onStartSuccess(settingsInEffect);
             if (mOnBleAdvertiserListener != null) {
                 if (startStatus) {
-                    mOnBleAdvertiserListener.onStartSuccess(mAdId,settingsInEffect);
+                    mOnBleAdvertiserListener.onStartSuccess(mAdId, settingsInEffect);
                 } else {
                     mOnBleAdvertiserListener.onStopSuccess(mAdId);
                 }
@@ -481,9 +503,9 @@ public class XBleManager {
             super.onStartFailure(errorCode);
             if (mOnBleAdvertiserListener != null) {
                 if (startStatus) {
-                    mOnBleAdvertiserListener.onStartFailure(mAdId,errorCode);
+                    mOnBleAdvertiserListener.onStartFailure(mAdId, errorCode);
                 } else {
-                    mOnBleAdvertiserListener.onStopFailure(mAdId,errorCode);
+                    mOnBleAdvertiserListener.onStopFailure(mAdId, errorCode);
                 }
             }
         }
