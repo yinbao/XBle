@@ -23,7 +23,7 @@ import com.xing.xblelibrary.bean.AdCharacteristic;
 import com.xing.xblelibrary.bean.AdGattService;
 import com.xing.xblelibrary.bean.BleValueBean;
 import com.xing.xblelibrary.device.BleDevice;
-import com.xing.xblelibrary.listener.OnBleAdvertiserListener;
+import com.xing.xblelibrary.listener.OnBleAdvertiserConnectListener;
 import com.xing.xblelibrary.listener.OnBleScanConnectListener;
 import com.xing.xblelibrary.listener.OnNotifyDataListener;
 import com.xing.xblelibrary.utils.BleLog;
@@ -38,7 +38,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
-public class MainActivity extends AppCompatActivity implements OnBleScanConnectListener, OnBleAdvertiserListener, View.OnClickListener {
+public class MainActivity extends AppCompatActivity implements OnBleScanConnectListener, OnBleAdvertiserConnectListener, View.OnClickListener {
 
 
     private final int REFRESH_BLE = 1;
@@ -382,7 +382,7 @@ public class MainActivity extends AppCompatActivity implements OnBleScanConnectL
 
 
     @Override
-    public void onStartSuccess(int adId, AdvertiseSettings advertiseSettings) {
+    public void onStartAdSuccess(int adId, AdvertiseSettings advertiseSettings) {
         if (advertiseSettings != null)
             BleLog.i("广播成功:" + advertiseSettings.toString());
         mListData.add(0, TimeUtils.getCurrentTimeStr() + "广播成功:" + adId);
@@ -391,13 +391,13 @@ public class MainActivity extends AppCompatActivity implements OnBleScanConnectL
 
 
     @Override
-    public void onStartFailure(int adId, int errorCode) {
+    public void onStartAdFailure(int adId, int errorCode) {
         mListData.add(0, TimeUtils.getCurrentTimeStr() + "广播失败:" + errorCode);
         mHandler.sendEmptyMessage(REFRESH_DATA);
     }
 
     @Override
-    public void onStopSuccess(int adId) {
+    public void onStopAdSuccess(int adId) {
         BleLog.i("停止广播成功:" + adId);
         mListData.add(0, TimeUtils.getCurrentTimeStr() + "停止广播成功:" + adId);
         mHandler.sendEmptyMessage(REFRESH_DATA);
@@ -405,7 +405,7 @@ public class MainActivity extends AppCompatActivity implements OnBleScanConnectL
 
 
     @Override
-    public void onStopFailure(int adId, int errorCode) {
+    public void onStopAdFailure(int adId, int errorCode) {
         mListData.add(0, TimeUtils.getCurrentTimeStr() + "停止广播失败:" + errorCode);
         mHandler.sendEmptyMessage(REFRESH_DATA);
     }

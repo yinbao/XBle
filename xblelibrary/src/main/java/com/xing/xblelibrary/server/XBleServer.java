@@ -42,6 +42,7 @@ import com.xing.xblelibrary.config.XBleStaticConfig;
 import com.xing.xblelibrary.device.AdBleDevice;
 import com.xing.xblelibrary.device.BleDevice;
 import com.xing.xblelibrary.listener.BleConnectListenerIm;
+import com.xing.xblelibrary.listener.OnBleAdvertiserConnectListener;
 import com.xing.xblelibrary.listener.OnBleScanConnectListener;
 import com.xing.xblelibrary.listener.OnBleScanFilterListener;
 import com.xing.xblelibrary.listener.OnBleStatusListener;
@@ -109,6 +110,7 @@ public class XBleServer extends Service {
      * 连接接口回调
      */
     private OnBleScanConnectListener mBleScanConnectListener = null;
+    private OnBleAdvertiserConnectListener mOnBleAdvertiserConnectListener = null;
     /**
      * 蓝牙状态接口
      */
@@ -704,6 +706,16 @@ public class XBleServer extends Service {
     }
 
 
+    @Nullable
+    public AdBleDevice getAdBleDevice(String mac) {
+        if (mac != null && !mac.isEmpty()) {
+            return mAdBleObjectMap.get(mac.toUpperCase());
+        } else {
+            return null;
+        }
+    }
+
+
     /**
      * 获取所有的连接对象
      *
@@ -770,6 +782,7 @@ public class XBleServer extends Service {
                     }
                 } else {
                     String mAddress = gatt.getDevice().getAddress().toUpperCase();
+                    BleLog.e(TAG, "连接断开:"+mAddress);
                     if (mConnectGatt != null && mAddress.equals(mConnectGatt.getDevice().getAddress().toUpperCase())) {
                         mConnectGatt = null;
                     }
@@ -1340,6 +1353,9 @@ public class XBleServer extends Service {
         if (adBleDevice1 == null) {
             AdBleDevice adBleDevice = new AdBleDevice(device, mBluetoothGattServer);
             mAdBleObjectMap.put(address, adBleDevice);
+            runOnMainThread(()->{
+                mOnBleAdvertiserConnectListener.onAdConnectionSuccess(address);
+            });
             return adBleDevice;
         }
         return adBleDevice1;
@@ -1368,6 +1384,10 @@ public class XBleServer extends Service {
 
     public void setOnBleScanConnectListener(OnBleScanConnectListener listener) {
         mBleScanConnectListener = listener;
+    }
+
+    public void setOnBleAdvertiserConnectListener(OnBleAdvertiserConnectListener onBleAdvertiserConnectListener) {
+        mOnBleAdvertiserConnectListener = onBleAdvertiserConnectListener;
     }
 
     public void setOnBleStatusListener(OnBleStatusListener onBleStatusListener) {

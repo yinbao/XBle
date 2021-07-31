@@ -7,13 +7,17 @@ import android.bluetooth.le.AdvertiseSettings;
  * 2021/07/22<br>
  * Ble作为外围广播监听
  */
-public interface OnBleAdvertiserListener {
+public interface OnBleAdvertiserConnectListener {
 
+    /**
+     * 开始广播
+     */
+    default void onStartAdvertiser(){}
 
     /**
      * 发送广播成功
      */
-    default void onStartSuccess(int adId,AdvertiseSettings advertiseSettings) {
+    default void onStartAdSuccess(int adId, AdvertiseSettings advertiseSettings) {
     }
 
     /**
@@ -26,14 +30,14 @@ public interface OnBleAdvertiserListener {
      *                  {@link android.bluetooth.le.AdvertiseCallback#ADVERTISE_FAILED_INTERNAL_ERROR}//低层内部错误
      *                  {@link android.bluetooth.le.AdvertiseCallback#ADVERTISE_FAILED_FEATURE_UNSUPPORTED}//硬件不支持
      */
-    default void onStartFailure(int adId,int errorCode) {
+    default void onStartAdFailure(int adId, int errorCode) {
     }
 
 
     /**
      * 停止广播成功
      */
-    default void onStopSuccess(int adId) {
+    default void onStopAdSuccess(int adId) {
     }
 
     /**
@@ -41,7 +45,13 @@ public interface OnBleAdvertiserListener {
      *
      * @param errorCode 错误码:-1代表获取蓝牙对象为null
      */
-    default void onStopFailure(int adId,int errorCode) {
+    default void onStopAdFailure(int adId, int errorCode) {
+    }
+
+    /**
+     * 外围设备连接成功
+     */
+    default void onAdConnectionSuccess(String mac) {
     }
 
 

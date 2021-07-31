@@ -192,7 +192,10 @@ public final class AdBleDevice implements OnCharacteristicRequestListener {
                 if (mLinkedList.size() > 0) {
                     SendDataBean sendDataBean = mLinkedList.pollLast();
                     if (sendDataBean != null) {
-                        sendCmd(sendDataBean.getHex(), sendDataBean.getUuid(), sendDataBean.getType(), sendDataBean.getUuidService());
+                        boolean sendStatus = sendCmd(sendDataBean.getHex(), sendDataBean.getUuid(), sendDataBean.getType(), sendDataBean.getUuidService());
+                        if (!sendStatus) {//发送失败,重新加入到发送队列
+                            mLinkedList.addLast(sendDataBean);
+                        }
                         mHandler.sendEmptyMessageDelayed(SEND_DATA_KEY, mSendDataInterval);//设置间隔,避免发送失败
                     } else {
                         mHandler.sendEmptyMessage(SEND_DATA_KEY);//没有需要发送的数据,不需要间隔
@@ -223,7 +226,8 @@ public final class AdBleDevice implements OnCharacteristicRequestListener {
      * @param type        操作类型(1=读,2=写)
      * @param uuidService 服务的uuid
      */
-    private synchronized void sendCmd(byte[] hex, UUID uuid, int type, UUID uuidService) {
+    private synchronized boolean sendCmd(byte[] hex, UUID uuid, int type, UUID uuidService) {
+        boolean sendOk = false;
         try {
             BluetoothGattService mGattService = mBluetoothGattServer.getService(uuidService);
             if (mGattService != null && uuid != null) {
@@ -233,10 +237,9 @@ public final class AdBleDevice implements OnCharacteristicRequestListener {
                         mCharacteristic.setValue(hex);
                     }
                     mCharacteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
-                    boolean sendOk = false;
                     switch (type) {
                         case XBleStaticConfig.READ_DATA:
-//                            sendOk=mBluetoothGattServer.sendResponse(mBluetoothDevice, requestId, BluetoothGatt.GATT_SUCCESS, offset,mCharacteristic.getValue());
+                            sendOk = mBluetoothGattServer.sendResponse(mBluetoothDevice, 0, BluetoothGatt.GATT_SUCCESS, 0, mCharacteristic.getValue());
                             break;
 
                         case XBleStaticConfig.WRITE_DATA:
@@ -249,10 +252,12 @@ public final class AdBleDevice implements OnCharacteristicRequestListener {
                     BleLog.i(TAG, "type:" + type + " UUID=" + uuid + " || " + sendOk);
                 }
             }
+            return sendOk;
         } catch (Exception e) {
             BleLog.e(TAG, "读/写/异常:" + e.toString());
             e.printStackTrace();
         }
+        return sendOk;
     }
 
 

@@ -13,9 +13,10 @@ import android.os.IBinder;
 import com.xing.xblelibrary.bean.AdBleValueBean;
 import com.xing.xblelibrary.bean.BleValueBean;
 import com.xing.xblelibrary.config.XBleConfig;
+import com.xing.xblelibrary.device.AdBleDevice;
 import com.xing.xblelibrary.device.BleDevice;
 import com.xing.xblelibrary.listener.BleConnectListenerIm;
-import com.xing.xblelibrary.listener.OnBleAdvertiserListener;
+import com.xing.xblelibrary.listener.OnBleAdvertiserConnectListener;
 import com.xing.xblelibrary.listener.OnBleConnectListener;
 import com.xing.xblelibrary.listener.OnBleScanConnectListener;
 import com.xing.xblelibrary.listener.OnBleScanFilterListener;
@@ -289,6 +290,21 @@ public class XBleManager {
         return null;
     }
 
+
+    /**
+     * 获取外围的设备对象
+     *
+     * @param mac 设备地址
+     * @return AdBleDevice
+     */
+    @Nullable
+    public AdBleDevice getAdBleDevice(String mac) {
+        if (checkBluetoothServiceStatus()) {
+            return mXBleServer.getAdBleDevice(mac);
+        }
+        return null;
+    }
+
     /**
      * 设备BLE连接超时时间(获取服务超时时间,超时后连接错误码返回-1)
      *
@@ -410,20 +426,31 @@ public class XBleManager {
     private int mId = 1;
     private Map<Integer, OnBleAdvertiser> mAdvertiserMap;
 
+    private OnBleAdvertiserConnectListener mOnBleAdvertiserConnectListener;
+
+    public void setOnBleAdvertiserConnectListener(OnBleAdvertiserConnectListener onBleAdvertiserConnectListener) {
+        mOnBleAdvertiserConnectListener = onBleAdvertiserConnectListener;
+        if (checkBluetoothServiceStatus()) {
+            mXBleServer.setOnBleAdvertiserConnectListener(onBleAdvertiserConnectListener);
+        }
+    }
+
     /**
      * 广播
      *
      * @param adBleValueBean AdBleValueBean
-     * @param listener       OnBleAdvertiserListener
      * @return 广播ID, 用于关闭广播使用
      */
     @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
-    public int startAdvertiseData(AdBleValueBean adBleValueBean, OnBleAdvertiserListener listener) {
+    public int startAdvertiseData(AdBleValueBean adBleValueBean) {
         if (mAdvertiserMap == null) {
             mAdvertiserMap = new HashMap<>();
         }
+        if (mOnBleAdvertiserConnectListener!=null){
+            mOnBleAdvertiserConnectListener.onStartAdvertiser();
+        }
         mId++;
-        OnBleAdvertiser onBleAdvertiser = new OnBleAdvertiser(mId, listener);
+        OnBleAdvertiser onBleAdvertiser = new OnBleAdvertiser(mId, mOnBleAdvertiserConnectListener);
         if (mXBleServer != null) {
             onBleAdvertiser.setStartStatus(true);
             mXBleServer.startAdvertiseData(adBleValueBean, onBleAdvertiser);
@@ -464,7 +491,7 @@ public class XBleManager {
 
     @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
     public static class OnBleAdvertiser extends AdvertiseCallback {
-        private OnBleAdvertiserListener mOnBleAdvertiserListener;
+        private OnBleAdvertiserConnectListener mOnBleAdvertiserListener;
         /**
          * 开始广播状态
          */
@@ -480,7 +507,7 @@ public class XBleManager {
             this.startStatus = startStatus;
         }
 
-        public OnBleAdvertiser(int adId, OnBleAdvertiserListener onBleAdvertiserListener) {
+        public OnBleAdvertiser(int adId, OnBleAdvertiserConnectListener onBleAdvertiserListener) {
             mOnBleAdvertiserListener = onBleAdvertiserListener;
             setAdId(adId);
         }
@@ -490,9 +517,9 @@ public class XBleManager {
             super.onStartSuccess(settingsInEffect);
             if (mOnBleAdvertiserListener != null) {
                 if (startStatus) {
-                    mOnBleAdvertiserListener.onStartSuccess(mAdId, settingsInEffect);
+                    mOnBleAdvertiserListener.onStartAdSuccess(mAdId, settingsInEffect);
                 } else {
-                    mOnBleAdvertiserListener.onStopSuccess(mAdId);
+                    mOnBleAdvertiserListener.onStopAdSuccess(mAdId);
                 }
             }
 
@@ -503,9 +530,9 @@ public class XBleManager {
             super.onStartFailure(errorCode);
             if (mOnBleAdvertiserListener != null) {
                 if (startStatus) {
-                    mOnBleAdvertiserListener.onStartFailure(mAdId, errorCode);
+                    mOnBleAdvertiserListener.onStartAdFailure(mAdId, errorCode);
                 } else {
-                    mOnBleAdvertiserListener.onStopFailure(mAdId, errorCode);
+                    mOnBleAdvertiserListener.onStopAdFailure(mAdId, errorCode);
                 }
             }
         }
