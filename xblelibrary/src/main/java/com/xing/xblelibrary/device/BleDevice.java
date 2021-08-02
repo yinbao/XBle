@@ -249,7 +249,7 @@ public final class BleDevice {
         if (mOnNotifyDataListener != null) {
             UUID uuid = characteristic.getUuid();
             byte[] value = characteristic.getValue();
-            mOnNotifyDataListener.onNotifyData(uuid, value);
+            mOnNotifyDataListener.onNotifyData(characteristic, value);
         }
     }
 

@@ -12,6 +12,7 @@ import android.os.Message;
 
 import com.xing.xblelibrary.config.XBleStaticConfig;
 import com.xing.xblelibrary.listener.OnCharacteristicRequestListener;
+import com.xing.xblelibrary.listener.OnNotifyDataListener;
 import com.xing.xblelibrary.listener.onDisConnectedListener;
 import com.xing.xblelibrary.utils.BleLog;
 import com.xing.xblelibrary.utils.MyBleDeviceUtils;
@@ -32,7 +33,7 @@ public final class AdBleDevice implements OnCharacteristicRequestListener {
 
     private final int SEND_DATA_KEY = 1;
     private int mSendDataInterval = 10;
-
+    private OnNotifyDataListener mOnNotifyDataListener;
     private BluetoothGattServer mBluetoothGattServer;
     private BluetoothDevice mBluetoothDevice;
     /**
@@ -129,6 +130,8 @@ public final class AdBleDevice implements OnCharacteristicRequestListener {
     }
 
 
+
+
     @Override
     public void onCharacteristicReadRequest(BluetoothDevice device, int requestId, int offset, BluetoothGattCharacteristic characteristic) {
         mBluetoothGattServer.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, characteristic.getValue());
@@ -140,10 +143,11 @@ public final class AdBleDevice implements OnCharacteristicRequestListener {
         //通知
 //        characteristic.setValue(value);
 //        mBluetoothGattServer.notifyCharacteristicChanged(device, characteristic, false);
-        sendData(new SendDataBean(new byte[]{1}, characteristic.getUuid(), XBleStaticConfig.WRITE_DATA, characteristic.getService().getUuid()));
-        sendData(new SendDataBean(new byte[]{2}, characteristic.getUuid(), XBleStaticConfig.WRITE_DATA, characteristic.getService().getUuid()));
-        sendData(new SendDataBean(new byte[]{3}, characteristic.getUuid(), XBleStaticConfig.WRITE_DATA, characteristic.getService().getUuid()));
-        sendData(new SendDataBean(new byte[]{1, 2, 3}, characteristic.getUuid(), XBleStaticConfig.WRITE_DATA, characteristic.getService().getUuid()));
+        UUID uuid = characteristic.getUuid();
+        if (mOnNotifyDataListener!=null){
+            mOnNotifyDataListener.onNotifyData(characteristic,value);
+        }
+
     }
 
     @Override
@@ -296,5 +300,7 @@ public final class AdBleDevice implements OnCharacteristicRequestListener {
         mOnDisConnectedListener = onDisConnectedListener;
     }
 
-
+    public void setOnNotifyDataListener(OnNotifyDataListener onNotifyDataListener) {
+        mOnNotifyDataListener = onNotifyDataListener;
+    }
 }

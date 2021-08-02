@@ -1,6 +1,9 @@
 package com.xing.xblelibrary.device;
 
 
+import android.bluetooth.BluetoothGattCharacteristic;
+
+import com.xing.xblelibrary.listener.OnNotifyDataListener;
 import com.xing.xblelibrary.listener.onDisConnectedListener;
 
 import java.util.UUID;
@@ -13,7 +16,7 @@ import androidx.annotation.CallSuper;
  * 2021/07/21<br>
  * 设备对象抽象类
  */
-public abstract class BaseBleDeviceData implements onDisConnectedListener {
+public abstract class BaseBleDeviceData implements onDisConnectedListener, OnNotifyDataListener {
     private static String TAG = BaseBleDeviceData.class.getName();
 
     private BleDevice mBleDevice;
@@ -23,13 +26,17 @@ public abstract class BaseBleDeviceData implements onDisConnectedListener {
     public BaseBleDeviceData(BleDevice bleDevice) {
         mBleDevice = bleDevice;
         mBleDevice.setOnDisConnectedListener(this);
+        mBleDevice.setOnNotifyDataListener(this);
     }
 
     public BaseBleDeviceData(AdBleDevice bleDevice) {
         mAdBleDevice = bleDevice;
         mAdBleDevice.setOnDisConnectedListener(this);
+        mAdBleDevice.setOnNotifyDataListener(this);
     }
 
+    @Override
+    public abstract void onNotifyData(BluetoothGattCharacteristic characteristic, byte[] data);
 
     /**
      * 连接断开的回调

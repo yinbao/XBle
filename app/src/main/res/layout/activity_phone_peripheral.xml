@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="广播UUID-16byte:"
+                />
+            <EditText
+                android:id="@+id/tv_ad_uuid"
+                android:layout_width="200dp"
+                android:layout_height="wrap_content"
+                android:text="0000f0a1"
+                android:maxLength="8"
+                android:digits="0123456789abcdef"
+                />
+
+
+        </LinearLayout>
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="自定义厂商数据:"
+                />
+            <EditText
+                android:id="@+id/tv_ad_data_id"
+                android:layout_width="50dp"
+                android:layout_height="wrap_content"
+                android:text="01"
+                android:hint="ID"
+                android:maxLength="2"
+                android:digits="0123456789abcdef"
+                />
+            <EditText
+                android:id="@+id/tv_ad_data"
+                android:layout_width="200dp"
+                android:layout_height="wrap_content"
+                android:text="00010203"
+                android:hint="内容"
+                android:digits="0123456789abcdef"
+                />
+
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <Button
+            android:id="@+id/btn_start_ad"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="开始广播" />
+
+        <Button
+            android:id="@+id/btn_stop_ad"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="停止广播" />
+
+    </LinearLayout>
+
+
+
+    <ListView
+        android:id="@+id/lv_show_data"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:padding="10dp" />
+
+</LinearLayout>

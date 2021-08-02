@@ -46,25 +46,11 @@
         android:layout_height="wrap_content">
 
         <Button
-            android:id="@+id/btn_start_ad"
+            android:id="@+id/btn_periphery"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="开始广播"
+            android:text="手机做外围"
             />
-
-        <Button
-            android:id="@+id/btn_stop_ad"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="停止广播"
-            />
-
-        <EditText
-            android:id="@+id/et_ble_name"
-            android:layout_width="100dp"
-            android:layout_height="wrap_content"
-            />
-
 
 
     </LinearLayout>

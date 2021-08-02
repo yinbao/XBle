@@ -1,6 +1,6 @@
 package com.xing.xblelibrary.listener;
 
-import java.util.UUID;
+import android.bluetooth.BluetoothGattCharacteristic;
 
 /**
  * xing<br>
@@ -13,10 +13,11 @@ public interface OnNotifyDataListener {
     /**
      * notify返回的数据
      *
-     * @param uuid UUID
-     * @param data 数据
+     * @param characteristic BluetoothGattCharacteristic
+     * @param data           byte[]
      */
-     void onNotifyData(UUID uuid,byte[] data);
+    default void onNotifyData(BluetoothGattCharacteristic characteristic, byte[] data) {
+    }
 
 
 }

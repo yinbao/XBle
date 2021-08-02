@@ -119,7 +119,7 @@ public class AdBleValueBean {
             mTimeoutMillis = 0;
             dataBuilder = new AdvertiseData.Builder();
             mIncludeDeviceName = true;//设置广播中是否包含名称
-            mIncludeTxPowerLevel = true;//设置广播中是否包含传输速率
+            mIncludeTxPowerLevel = false;//设置广播中是否包含传输速率
 //            dataBuilder.addManufacturerData(0,null);//设置自定义厂商数据
 //            dataBuilder.addServiceUuid(null);//设置广播的服务uuid
 //            dataBuilder.addServiceData(null, null);//设置广播的服务uuid,内容

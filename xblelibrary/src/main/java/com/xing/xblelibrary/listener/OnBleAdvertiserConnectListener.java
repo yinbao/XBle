@@ -54,5 +54,9 @@ public interface OnBleAdvertiserConnectListener {
     default void onAdConnectionSuccess(String mac) {
     }
 
-
+    /**
+     * 连接断开,在UI线程
+     */
+    default void onAdDisConnected(String mac, int code) {
+    }
 }

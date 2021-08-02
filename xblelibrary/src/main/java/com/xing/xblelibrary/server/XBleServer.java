@@ -347,7 +347,7 @@ public class XBleServer extends Service {
         mGattCallback = new MyBluetoothGattCallback();
         connectMax = XBleConfig.getInstance().getConnectMax();
         bleState();
-        deviceConnectListener();
+        deviceAdConnectListener();
     }
 
     //------------------------搜索设备-----------------------------------
@@ -782,7 +782,7 @@ public class XBleServer extends Service {
                     }
                 } else {
                     String mAddress = gatt.getDevice().getAddress().toUpperCase();
-                    BleLog.e(TAG, "连接断开:"+mAddress);
+                    BleLog.e(TAG, "连接断开:" + mAddress);
                     if (mConnectGatt != null && mAddress.equals(mConnectGatt.getDevice().getAddress().toUpperCase())) {
                         mConnectGatt = null;
                     }
@@ -937,13 +937,21 @@ public class XBleServer extends Service {
             gatt.close();
         runOnMainThread(() -> {
             BleLog.i(TAG, "通知连接断开:" + code);
-            if (mBleScanConnectListener != null) {
-                mBleScanConnectListener.onDisConnected(mac, code);
-            }
-            BleConnectListenerIm.getInstance().onDisConnected(mBleScanConnectListener, mac, code);
+
             BleDevice bleDevice = mBleObjectMap.get(mac);
             if (bleDevice != null) {
                 bleDevice.onDisConnected();
+                if (mBleScanConnectListener != null) {
+                    mBleScanConnectListener.onDisConnected(mac, code);
+                }
+                BleConnectListenerIm.getInstance().onDisConnected(mBleScanConnectListener, mac, code);
+            }
+            AdBleDevice adBleDevice = mAdBleObjectMap.get(mac);
+            if (adBleDevice != null) {
+                adBleDevice.disconnect();
+                if (mOnBleAdvertiserConnectListener != null) {
+                    mOnBleAdvertiserConnectListener.onAdDisConnected(mac, code);
+                }
             }
             removeConnect(mac);
         });
@@ -960,6 +968,9 @@ public class XBleServer extends Service {
     public void removeConnect(String mac) {
         if (mBleObjectMap != null) {
             mBleObjectMap.remove(mac);
+        }
+        if (mAdBleObjectMap != null) {
+            mAdBleObjectMap.remove(mac);
         }
     }
 
@@ -1182,6 +1193,9 @@ public class XBleServer extends Service {
 
     @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
     public void startAdvertiseData(AdBleValueBean adBleValueBean, XBleManager.OnBleAdvertiser listener) {
+        if (mBluetoothGattServer != null) {
+            mBluetoothGattServer.clearServices();
+        }
         BluetoothLeAdvertiser bluetoothLeAdvertiser = mBluetoothAdapter.getBluetoothLeAdvertiser();
         if (bluetoothLeAdvertiser == null) {
             if (listener != null) {
@@ -1190,12 +1204,14 @@ public class XBleServer extends Service {
             return;
         }
         bluetoothLeAdvertiser.startAdvertising(adBleValueBean.getAdvertiseSettings(), adBleValueBean.getAdvertiseData(), listener);
+
         if (adBleValueBean.getAdvertiseSettings().isConnectable()) {
             List<BluetoothGattService> bluetoothGattServiceList = adBleValueBean.getBluetoothGattServiceList();
-            mBluetoothGattServer.clearServices();
             if (bluetoothGattServiceList != null) {
                 for (BluetoothGattService bluetoothGattService : bluetoothGattServiceList) {
-                    mBluetoothGattServer.addService(bluetoothGattService);
+                    if (mBluetoothGattServer != null) {
+                        mBluetoothGattServer.addService(bluetoothGattService);
+                    }
                 }
             }
         }
@@ -1242,14 +1258,15 @@ public class XBleServer extends Service {
     }
 
     /**
-     * 系统ble连接监听,监听指定的mac地址的设备,发现连接成功后马上连接获取操作的对象
+     * 系统ble连接监听,发现连接成功后马上判断连接获取操作的对象
      */
-    private void deviceConnectListener() {
+    private void deviceAdConnectListener() {
         //设备已连接
         mBluetoothGattServer = mBleManager.openGattServer(this, new BluetoothGattServerCallback() {
             @Override
             public void onConnectionStateChange(BluetoothDevice device, int status, int newState) {
                 super.onConnectionStateChange(device, status, newState);
+                BleLog.i("手机作为外围:onConnectionStateChange:" + device.getAddress() + " status:" + status + " newState" + newState);
                 //连接成功
                 if (newState == BluetoothProfile.STATE_CONNECTED) {
                     //系统监听到连接成功
@@ -1259,12 +1276,21 @@ public class XBleServer extends Service {
                         connectDevice(address);//手机作为中央,去连接外围设备
 
                     }
+                } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
+                    //连接断开
+                    String mAddress = device.getAddress().toUpperCase();
+                    if (mConnectGatt != null && mAddress.equals(mConnectGatt.getDevice().getAddress())) {
+                        mConnectGatt = null;
+                    }
+                    disconnect(mAddress, status, null);
+
                 }
             }
 
             @Override
             public void onServiceAdded(int status, BluetoothGattService service) {
                 super.onServiceAdded(status, service);
+                BleLog.i("手机作为外围:onServiceAdded");
                 //连接获取服务成功
 //                mAdBleDevice=new AdBleDevice(null,mBluetoothGattServer);
 
@@ -1324,7 +1350,7 @@ public class XBleServer extends Service {
                 super.onNotificationSent(device, status);
                 BleLog.i("手机作为外围:onNotificationSent:" + status);
                 AdBleDevice adBleDevice = newAdBleDevice(device);
-                adBleDevice.onNotificationSent(device,status);
+                adBleDevice.onNotificationSent(device, status);
             }
 
             @Override
@@ -1344,6 +1370,7 @@ public class XBleServer extends Service {
 
     /**
      * 获取AdBleDevice对象
+     *
      * @param device BluetoothDevice
      * @return AdBleDevice
      */
@@ -1353,7 +1380,7 @@ public class XBleServer extends Service {
         if (adBleDevice1 == null) {
             AdBleDevice adBleDevice = new AdBleDevice(device, mBluetoothGattServer);
             mAdBleObjectMap.put(address, adBleDevice);
-            runOnMainThread(()->{
+            runOnMainThread(() -> {
                 mOnBleAdvertiserConnectListener.onAdConnectionSuccess(address);
             });
             return adBleDevice;
