@@ -17,6 +17,7 @@
             </intent-filter>
         </activity>
         <activity android:name=".PhonePeripheralActivity" />
+        <activity android:name=".PhoneCentralActivity" />
     </application>
 
 </manifest>

@@ -1356,7 +1356,7 @@ public class XBleServer extends Service {
             @Override
             public void onMtuChanged(BluetoothDevice device, int mtu) {
                 super.onMtuChanged(device, mtu);
-                BleLog.i("手机作为外围:onMtuChanged");
+                BleLog.i("手机作为外围:onMtuChanged:"+mtu);
                 AdBleDevice adBleDevice = newAdBleDevice(device);
                 adBleDevice.onMtuChangedRequest(device, mtu);
             }

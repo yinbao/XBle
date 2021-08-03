@@ -1,30 +1,15 @@
 package com.xing.XBle;
 
 import android.Manifest;
-import android.bluetooth.BluetoothGattCharacteristic;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
-import android.os.Message;
-import android.text.TextUtils;
 import android.view.View;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
 import android.widget.Button;
-import android.widget.ListView;
 
 import com.xing.xblelibrary.XBleManager;
-import com.xing.xblelibrary.bean.BleValueBean;
-import com.xing.xblelibrary.device.BleDevice;
-import com.xing.xblelibrary.listener.OnBleScanConnectListener;
-import com.xing.xblelibrary.listener.OnNotifyDataListener;
 import com.xing.xblelibrary.utils.BleLog;
-
-import java.util.ArrayList;
-import java.util.List;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -32,65 +17,23 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
-public class MainActivity extends AppCompatActivity implements OnBleScanConnectListener,  View.OnClickListener {
+public class MainActivity extends AppCompatActivity implements  View.OnClickListener {
 
-
-    private final int REFRESH_BLE = 1;
-    private final int REFRESH_DATA = 2;
-
-    private List<String> mListBle;
-    private List<String> mListData;
-    private ArrayAdapter mListAdapterBle;
-    private ArrayAdapter mListAdapterData;
-    private ListView mListViewBle;
-    private ListView mListViewData;
-    private Button btn_start_scan, btn_clear, btn_stop_scan, btn_disconnect, btn_periphery;
-    public static String UUID_SERVER_BROADCAST_AILINK = "0000F0A0-0000-1000-8000-00805F9B34FB";
-    public static String UUID_SERVER_BROADCAST_W = "0000F0A1-0000-1000-8000-00805F9B34FB";
-    private String mBleName = "";
-
-    private Handler mHandler = new Handler(Looper.getMainLooper()) {
-        @Override
-        public void handleMessage(@NonNull Message msg) {
-            switch (msg.what) {
-                case REFRESH_BLE:
-                    if (mListAdapterBle != null) {
-                        mListAdapterBle.notifyDataSetChanged();
-                    }
-
-                    break;
-
-
-                case REFRESH_DATA:
-                    if (mListAdapterData != null) {
-                        mListAdapterData.notifyDataSetChanged();
-                    }
-                    break;
-            }
-        }
-    };
-
+    private Button btn_central, btn_periphery;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
         init();
-
         BleLog.init(true);//开启日志
         XBleManager.getXBleConfig().setConnectMax(7).setAutoConnectSystemBle(false).setAutoMonitorSystemConnectBle(false);
         XBleManager.getInstance().init(getApplicationContext(), new XBleManager.onInitListener() {
             @Override
             public void onInitSuccess() {
-                //初始化成功
-                XBleManager.getInstance().setOnBleScanConnectListener(MainActivity.this);//设置监听
                 initPermissions();//判断权限
-
             }
         });
-
-
     }
 
 
@@ -101,21 +44,9 @@ public class MainActivity extends AppCompatActivity implements OnBleScanConnectL
     }
 
     private void initListener() {
-        mListViewBle.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                String data = mListBle.get(position);
-                String mac = data.substring(data.indexOf("MAC=") + 4).trim();
-                XBleManager.getInstance().stopScan();
-                XBleManager.getInstance().connectDevice(mac);
-            }
-        });
 
-        btn_start_scan.setOnClickListener(this);
-        btn_stop_scan.setOnClickListener(this);
-        btn_clear.setOnClickListener(this);
-        btn_disconnect.setOnClickListener(this);
         btn_periphery.setOnClickListener(this);
+        btn_central.setOnClickListener(this);
 
     }
 
@@ -125,41 +56,20 @@ public class MainActivity extends AppCompatActivity implements OnBleScanConnectL
         int id = v.getId();
         if (id == R.id.btn_periphery) {
             startActivity(new Intent(this,PhonePeripheralActivity.class));
-        }  else if (id == R.id.btn_start_scan) {
-            XBleManager.getInstance().startScan(30000);
-        } else if (id == R.id.btn_stop_scan) {
-            XBleManager.getInstance().stopScan();
-            mListData.add(0, TimeUtils.getCurrentTimeStr() + "停止扫描");
-            mHandler.sendEmptyMessage(REFRESH_DATA);
-        } else if (id == R.id.btn_clear) {
-            mListBle.clear();
-            mHandler.sendEmptyMessage(REFRESH_BLE);
-            mListData.clear();
-            mHandler.sendEmptyMessage(REFRESH_DATA);
-        } else if (id == R.id.btn_disconnect) {
-            XBleManager.getInstance().disconnectAll();
-        }
+        }  else if (id == R.id.btn_central) {
+            startActivity(new Intent(this,PhoneCentralActivity.class));
+        } 
     }
 
     private void initData() {
-        mListBle = new ArrayList<>();
-        mListAdapterBle = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, mListBle);
-        mListViewBle.setAdapter(mListAdapterBle);
 
-        mListData = new ArrayList<>();
-        mListAdapterData = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, mListData);
-        mListViewData.setAdapter(mListAdapterData);
 
     }
 
     private void initView() {
-        mListViewBle = findViewById(R.id.lv_show_ble);
-        mListViewData = findViewById(R.id.lv_show_data);
-        btn_start_scan = findViewById(R.id.btn_start_scan);
-        btn_clear = findViewById(R.id.btn_clear);
-        btn_stop_scan = findViewById(R.id.btn_stop_scan);
-        btn_disconnect = findViewById(R.id.btn_disconnect);
         btn_periphery = findViewById(R.id.btn_periphery);
+        btn_central = findViewById(R.id.btn_central);
+
     }
 
 
@@ -228,126 +138,7 @@ public class MainActivity extends AppCompatActivity implements OnBleScanConnectL
      * 权限ok
      */
     protected void onPermissionsOk() {
-        XBleManager.getInstance().setOnBleScanConnectListener(this);//设置监听
-        XBleManager.getInstance().startScan(1000);//开始搜索
-    }
 
-
-    @Override
-    public void onStartScan() {
-        //开始扫描
-//        mBleName = et_ble_name.getText().toString().trim();
-        BleLog.i("开始扫描");
-        mListData.add(0, TimeUtils.getCurrentTimeStr() + "开始扫描");
-        mHandler.sendEmptyMessage(REFRESH_DATA);
-    }
-
-    @Override
-    public void onScanning(BleValueBean data) {
-        //扫描返回的结果,每发现一个设备就会回调一次
-        BleLog.i("扫描结果:" + data.getName() + " mac:" + data.getMac());
-        if (TextUtils.isEmpty(mBleName) || (data.getName() != null && data.getName().toUpperCase().contains(mBleName.toUpperCase()))) {
-            String bleData = "Name=" + data.getName() + "\nMAC=" + data.getMac();
-            if (!mListBle.contains(bleData)) {
-                mListBle.add(bleData);
-                mListAdapterBle.notifyDataSetChanged();
-            }
-        }
-    }
-
-    @Override
-    public void onScanTimeOut() {
-        //扫描超时,当设置扫描时间为0时将不会触发此方法
-        BleLog.i("扫描超时");
-        mListData.add(0, TimeUtils.getCurrentTimeStr() + "扫描超时");
-        mHandler.sendEmptyMessage(REFRESH_DATA);
-    }
-
-    @Override
-    public void onScanErr(long time) {
-        //扫描异常
-        BleLog.i("扫描太频繁,请在" + time + "ms后再进行扫描");
-        mListData.add(0, TimeUtils.getCurrentTimeStr() + "扫描太频繁,请在" + time + "ms后再进行扫描");
-        mHandler.sendEmptyMessage(REFRESH_DATA);
-    }
-
-    @Override
-    public void onConnecting(String mac) {
-        //连接中
-        BleLog.i("正在连接的设备:" + mac);
-        mListData.add(0, TimeUtils.getCurrentTimeStr() + "正在连接的设备:" + mac);
-        mHandler.sendEmptyMessage(REFRESH_DATA);
-
-    }
-
-    @Override
-    public void onDisConnected(String mac, int code) {
-        //连接断开
-        //code=-1 代表连接超时
-        //code=-2 代表获取服务失败
-        BleLog.i("连接断开:" + mac + " 错误码:" + code);
-        mListData.add(0, TimeUtils.getCurrentTimeStr() + "连接断开:" + mac + " 错误码:" + code);
-        mHandler.sendEmptyMessage(REFRESH_DATA);
-    }
-
-    @Override
-    public void onConnectionSuccess(String mac) {
-        //连接成功,需要获取服务成功之后才允许操作
-        BleLog.i("连接成功:" + mac);
-        mListData.add(TimeUtils.getCurrentTimeStr() + "连接成功:" + mac);
-        mHandler.sendEmptyMessage(REFRESH_DATA);
-    }
-
-    @Override
-    public void onServicesDiscovered(String mac) {
-        //连接获取服务成功
-        BleLog.i("获取服务成功:" + mac);
-        mListData.add(0, TimeUtils.getCurrentTimeStr() + "获取服务成功:" + mac + " 当前连接个数:" + XBleManager.getInstance().getBleDeviceAll().size());
-        mHandler.sendEmptyMessage(REFRESH_DATA);
-        BleDevice bleDevice = XBleManager.getInstance().getBleDevice(mac);
-        if (bleDevice != null) {
-//            bleDevice.setSendDataInterval(100);//修改发送队列间隔,默认是200ms
-//            bleDevice.setNotifyAll();//开启所有的notify
-//            bleDevice.setNotify(serverUUID,notifyUUID1,notifyUUID2);//设置通知
-//            bleDevice.sendDataNow(new SendDataBean());实时发送内容
-//            bleDevice.sendData(new SendDataBean());使用队列发送内容
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-//                bleDevice.setMtu(23);//设置吞吐量,23~517,需要ble设备支持
-//                {@link BluetoothGatt#CONNECTION_PRIORITY_BALANCED}默认
-//                {@link BluetoothGatt#CONNECTION_PRIORITY_HIGH}高功率,提高传输速度
-//                {@link BluetoothGatt#CONNECTION_PRIORITY_LOW_POWER}低功率,传输速度减慢,更省电
-//                bleDevice.setConnectPriority(BluetoothGatt.CONNECTION_PRIORITY_BALANCED);//设置ble交互间隔,需要ble设备支持
-            }
-
-            bleDevice.setOnNotifyDataListener(new OnNotifyDataListener() {
-
-                @Override
-                public void onNotifyData(BluetoothGattCharacteristic characteristic, byte[] data) {
-                    //需要setNotify之后,并且ble返回了数据才会触发
-                    BleLog.i("ble返回的数据:" + BleStrUtils.byte2HexStr(data));
-                    mListData.add(0, TimeUtils.getCurrentTimeStr() + "Notify:" + characteristic.getUuid().toString() + "\n外围设备返回的数据:" + BleStrUtils.byte2HexStr(data));
-                    mHandler.sendEmptyMessage(REFRESH_DATA);
-                }
-
-
-            });
-        }
-    }
-
-    @Override
-    public void bleOpen() {
-        //蓝牙已开启
-        onPermissionsOk();
-        mListData.add(0, TimeUtils.getCurrentTimeStr() + "蓝牙已开启");
-        mHandler.sendEmptyMessage(REFRESH_DATA);
-
-    }
-
-    @Override
-    public void bleClose() {
-        //蓝牙已关闭
-        mListData.add(0, TimeUtils.getCurrentTimeStr() + "蓝牙已关闭");
-        mHandler.sendEmptyMessage(REFRESH_DATA);
     }
 
 

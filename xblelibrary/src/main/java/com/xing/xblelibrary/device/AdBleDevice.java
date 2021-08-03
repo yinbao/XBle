@@ -61,6 +61,7 @@ public final class AdBleDevice implements OnCharacteristicRequestListener {
      * 是否允许发送下一个消息
      */
     private volatile boolean mSendNextMessage = true;
+    private int mMtu=23;
     private onDisConnectedListener mOnDisConnectedListener;
 
 
@@ -157,7 +158,7 @@ public final class AdBleDevice implements OnCharacteristicRequestListener {
 
     @Override
     public void onMtuChangedRequest(BluetoothDevice device, int mtu) {
-
+        mMtu=mtu;
     }
 
 
