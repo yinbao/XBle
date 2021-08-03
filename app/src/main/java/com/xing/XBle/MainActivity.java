@@ -8,14 +8,14 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 
-import com.xing.xblelibrary.XBleManager;
-import com.xing.xblelibrary.utils.BleLog;
-
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+
+import com.xing.xblelibrary.XBleManager;
+import com.xing.xblelibrary.utils.BleLog;
 
 public class MainActivity extends AppCompatActivity implements  View.OnClickListener {
 
@@ -27,7 +27,10 @@ public class MainActivity extends AppCompatActivity implements  View.OnClickList
         setContentView(R.layout.activity_main);
         init();
         BleLog.init(true);//开启日志
-        XBleManager.getXBleConfig().setConnectMax(7).setAutoConnectSystemBle(false).setAutoMonitorSystemConnectBle(false);
+        XBleManager.getXBleConfig()
+                .setConnectMax(7)//设置最大连接数据
+                .setAutoConnectSystemBle(false)//设置是否自动连接系统已连接的设备
+                .setAutoMonitorSystemConnectBle(false);//设置是否自动监听连接系统连接的设备,并在通用OnBleScanConnectListener接口中回调
         XBleManager.getInstance().init(getApplicationContext(), new XBleManager.onInitListener() {
             @Override
             public void onInitSuccess() {
