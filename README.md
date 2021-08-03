@@ -1,4 +1,5 @@
 # XBle使用说明
+[![](https://jitpack.io/v/yinbao/XBle.svg)](https://jitpack.io/#yinbao/XBle)
 一个支持多连接和监听android系统连接的Ble库
 
 ![手机广播的数据](https://github.com/yinbao/XBle/blob/master/BroadcastData.jpeg)
