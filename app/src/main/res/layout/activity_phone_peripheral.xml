@@ -24,7 +24,7 @@
                 android:id="@+id/et_ad_uuid"
                 android:layout_width="200dp"
                 android:layout_height="wrap_content"
-                android:text="0000f0a1"
+                android:text="0000FFD0"
                 android:maxLength="8"
                 android:digits="0123456789abcdef"
                 />
@@ -42,18 +42,18 @@
                 />
             <EditText
                 android:id="@+id/et_ad_data_id"
-                android:layout_width="50dp"
+                android:layout_width="60dp"
                 android:layout_height="wrap_content"
-                android:text="01"
+                android:text="496E"
                 android:hint="ID"
-                android:maxLength="2"
+                android:maxLength="4"
                 android:digits="0123456789abcdef"
                 />
             <EditText
                 android:id="@+id/et_ad_data"
                 android:layout_width="200dp"
                 android:layout_height="wrap_content"
-                android:text="00010203"
+                android:text="003100000000"
                 android:hint="内容"
                 android:digits="0123456789abcdef"
                 />
@@ -94,7 +94,8 @@
             android:layout_width="0dp"
             android:layout_weight="1"
             android:layout_height="wrap_content"
-            android:text=""
+            android:text="0b4C4D06010A00130507"
+            tools:text="0d01220300000058"
             />
         <Button
             android:id="@+id/btn_send_data"

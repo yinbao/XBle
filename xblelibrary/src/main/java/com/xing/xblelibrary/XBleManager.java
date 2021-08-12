@@ -1,8 +1,6 @@
 package com.xing.xblelibrary;
 
 import android.bluetooth.BluetoothAdapter;
-import android.bluetooth.le.AdvertiseCallback;
-import android.bluetooth.le.AdvertiseSettings;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -24,10 +22,7 @@ import com.xing.xblelibrary.listener.OnBleStatusListener;
 import com.xing.xblelibrary.server.XBleServer;
 
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 import androidx.annotation.DrawableRes;
@@ -184,7 +179,7 @@ public class XBleManager {
         }
         if (mXBleServer != null) {
             boolean autoConnectSystemBle = XBleConfig.getInstance().isAutoConnectSystemBle();
-            if (autoConnectSystemBle){
+            if (autoConnectSystemBle) {
                 mXBleServer.autoConnectSystemBle();
             }
             mXBleServer.setAutoMonitorSystemConnectBle(XBleConfig.getInstance().isAutoMonitorSystemConnectBle());
@@ -317,7 +312,6 @@ public class XBleManager {
     }
 
 
-
     /**
      * 设置扫描过滤回调接口
      *
@@ -423,8 +417,6 @@ public class XBleManager {
 
     //----------------广播-------------------
 
-    private int mId = 1;
-    private Map<Integer, OnBleAdvertiser> mAdvertiserMap;
 
     private OnBleAdvertiserConnectListener mOnBleAdvertiserConnectListener;
 
@@ -439,102 +431,28 @@ public class XBleManager {
      * 广播
      *
      * @param adBleValueBean AdBleValueBean
-     * @return 广播ID, 用于关闭广播使用
      */
     @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
-    public int startAdvertiseData(AdBleValueBean adBleValueBean) {
-        if (mAdvertiserMap == null) {
-            mAdvertiserMap = new HashMap<>();
-        }
-        if (mOnBleAdvertiserConnectListener!=null){
+    public void startAdvertiseData(AdBleValueBean adBleValueBean) {
+        if (mOnBleAdvertiserConnectListener != null) {
             mOnBleAdvertiserConnectListener.onStartAdvertiser();
         }
-        mId++;
-        OnBleAdvertiser onBleAdvertiser = new OnBleAdvertiser(mId, mOnBleAdvertiserConnectListener);
         if (mXBleServer != null) {
-            onBleAdvertiser.setStartStatus(true);
-            mXBleServer.startAdvertiseData(adBleValueBean, onBleAdvertiser);
-            mAdvertiserMap.put(mId, onBleAdvertiser);
+            mXBleServer.startAdvertiseData(adBleValueBean, mOnBleAdvertiserConnectListener);
         }
-        return mId;
     }
 
 
     /**
      * 关闭广播
      *
-     * @param id 广播id,-1代表关闭所有
      */
     @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
-    public void stopAdvertiseData(int id) {
-        if (mAdvertiserMap == null) {
-            return;
-        }
-        if (id > 0) {
-            OnBleAdvertiser onBleAdvertiser = mAdvertiserMap.get(id);
-            if (mXBleServer != null && onBleAdvertiser != null) {
-                onBleAdvertiser.setStartStatus(false);
-                mXBleServer.stopAdvertiseData(onBleAdvertiser);
-                mAdvertiserMap.remove(id);
-            }
-        } else {
-            Collection<OnBleAdvertiser> values = mAdvertiserMap.values();
-            for (OnBleAdvertiser value : values) {
-                value.setStartStatus(false);
-                mXBleServer.stopAdvertiseData(value);
-            }
-            mAdvertiserMap.clear();
-
-        }
+    public void stopAdvertiseData() {
+        if (mXBleServer != null)
+            mXBleServer.stopAdvertiseData();
 
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
-    public static class OnBleAdvertiser extends AdvertiseCallback {
-        private OnBleAdvertiserConnectListener mOnBleAdvertiserListener;
-        /**
-         * 开始广播状态
-         */
-        private boolean startStatus = true;
-        private int mAdId;
 
-
-        public void setAdId(int adId) {
-            mAdId = adId;
-        }
-
-        public void setStartStatus(boolean startStatus) {
-            this.startStatus = startStatus;
-        }
-
-        public OnBleAdvertiser(int adId, OnBleAdvertiserConnectListener onBleAdvertiserListener) {
-            mOnBleAdvertiserListener = onBleAdvertiserListener;
-            setAdId(adId);
-        }
-
-        @Override
-        public void onStartSuccess(AdvertiseSettings settingsInEffect) {
-            super.onStartSuccess(settingsInEffect);
-            if (mOnBleAdvertiserListener != null) {
-                if (startStatus) {
-                    mOnBleAdvertiserListener.onStartAdSuccess(mAdId, settingsInEffect);
-                } else {
-                    mOnBleAdvertiserListener.onStopAdSuccess(mAdId);
-                }
-            }
-
-        }
-
-        @Override
-        public void onStartFailure(int errorCode) {
-            super.onStartFailure(errorCode);
-            if (mOnBleAdvertiserListener != null) {
-                if (startStatus) {
-                    mOnBleAdvertiserListener.onStartAdFailure(mAdId, errorCode);
-                } else {
-                    mOnBleAdvertiserListener.onStopAdFailure(mAdId, errorCode);
-                }
-            }
-        }
-    }
 }

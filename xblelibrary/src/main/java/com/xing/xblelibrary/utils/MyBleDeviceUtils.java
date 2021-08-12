@@ -25,19 +25,15 @@ public class MyBleDeviceUtils {
      * @return
      */
     public static boolean isSupportBle(Context mContext) {
-        boolean isBle = mContext.getApplicationContext()
-            .getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE);
+        boolean isBle = mContext.getApplicationContext().getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE);
         return isBle;
     }
-
-
 
 
     /**
      * 获取我们需要的服务 通过UUID判断
      *
      * @param mBluetoothGatt BluetoothGatt
-     *
      * @return BluetoothGattService符合uuid的服务, 否则返回null
      */
     public static BluetoothGattService getService(BluetoothGatt mBluetoothGatt, UUID uuidService) {
@@ -54,11 +50,9 @@ public class MyBleDeviceUtils {
      *
      * @param mBleGattService 服务
      * @param uuid            特征的uuid
-     *
      * @return BluetoothGattCharacteristic符合uuid的特征, 否则返回null
      */
-    public static BluetoothGattCharacteristic getServiceWrite(BluetoothGattService mBleGattService,
-                                                              UUID uuid) {
+    public static BluetoothGattCharacteristic getServiceWrite(BluetoothGattService mBleGattService, UUID uuid) {
         if (mBleGattService != null) {
             BluetoothGattCharacteristic mCharacteristic = mBleGattService.getCharacteristic(uuid);
             return mCharacteristic;
@@ -67,14 +61,13 @@ public class MyBleDeviceUtils {
     }
 
 
-
     /**
      * Clears the internal cache and forces a refresh of the services from the remote device.
      */
     public static boolean refreshDeviceCache(BluetoothGatt mBluetoothGatt) {
         if (mBluetoothGatt != null) {
             try {
-                Method localMethod = mBluetoothGatt.getClass().getMethod("refresh", new Class[0]);
+                Method localMethod = mBluetoothGatt.getClass().getMethod("refresh");
                 if (localMethod != null) {
                     boolean bool = (Boolean) localMethod.invoke(mBluetoothGatt, new Object[0]);
                     return bool;
@@ -86,5 +79,33 @@ public class MyBleDeviceUtils {
         return false;
     }
 
+
+    /**
+     * Clears the internal cache and forces a refresh of the services from the remote device.
+     *
+     * @param mBluetoothGatt
+     * @param minConnectionInterval
+     * @param maxConnectionInterval
+     * @param slaveLatency
+     * @param supervisionTimeout
+     * @param minConnectionEventLen
+     * @param maxConnectionEventLen
+     * @return
+     */
+    public static boolean requestLeConnectionUpdate(BluetoothGatt mBluetoothGatt, int minConnectionInterval, int maxConnectionInterval, int slaveLatency, int supervisionTimeout,
+                                                    int minConnectionEventLen, int maxConnectionEventLen) {
+        if (mBluetoothGatt != null) {
+            try {
+                Method localMethod = mBluetoothGatt.getClass().getMethod("requestLeConnectionUpdate", Integer.class,Integer.class,Integer.class,Integer.class,Integer.class,Integer.class);
+                if (localMethod != null) {
+                    boolean bool = (Boolean) localMethod.invoke(mBluetoothGatt, new Object[]{minConnectionInterval,maxConnectionInterval,slaveLatency,supervisionTimeout,minConnectionEventLen,maxConnectionEventLen});
+                    return bool;
+                }
+            } catch (Exception localException) {
+                Log.i(TAG, "An exception occured while refreshing device");
+            }
+        }
+        return false;
+    }
 
 }

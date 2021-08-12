@@ -12,12 +12,13 @@ public interface OnBleAdvertiserConnectListener {
     /**
      * 开始广播
      */
-    default void onStartAdvertiser(){}
+    default void onStartAdvertiser() {
+    }
 
     /**
      * 发送广播成功
      */
-    default void onStartAdSuccess(int adId, AdvertiseSettings advertiseSettings) {
+    default void onStartAdSuccess(AdvertiseSettings advertiseSettings) {
     }
 
     /**
@@ -30,14 +31,14 @@ public interface OnBleAdvertiserConnectListener {
      *                  {@link android.bluetooth.le.AdvertiseCallback#ADVERTISE_FAILED_INTERNAL_ERROR}//低层内部错误
      *                  {@link android.bluetooth.le.AdvertiseCallback#ADVERTISE_FAILED_FEATURE_UNSUPPORTED}//硬件不支持
      */
-    default void onStartAdFailure(int adId, int errorCode) {
+    default void onStartAdFailure(int errorCode) {
     }
 
 
     /**
      * 停止广播成功
      */
-    default void onStopAdSuccess(int adId) {
+    default void onStopAdSuccess() {
     }
 
     /**
@@ -45,7 +46,7 @@ public interface OnBleAdvertiserConnectListener {
      *
      * @param errorCode 错误码:-1代表获取蓝牙对象为null
      */
-    default void onStopAdFailure(int adId, int errorCode) {
+    default void onStopAdFailure(int errorCode) {
     }
 
     /**

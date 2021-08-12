@@ -47,9 +47,30 @@ public class PhonePeripheralActivity extends AppCompatActivity implements View.O
     private ListView mListViewData;
     private Button btn_start_ad, btn_stop_ad, btn_send_data;
     private EditText et_ad_uuid, et_ad_data_id, et_ad_data, et_send_data;
-    public static String UUID_SUFFIX = "-0000-1000-8000-00805F9B34FB";
-    public static String UUID_SERVER_1 = "0000F0A0-0000-1000-8000-00805F9B34FB";
-    public static String UUID_CHARACTERISTIC_1 = "0000F0A1-0000-1000-8000-00805F9B34FB";
+
+    /**
+     * 广播服务的uuid
+     */
+    public static String UUID_SERVER_BROADCAST = "0000FFD0-0000-1000-8000-00805F9B34FB";
+    /**
+     * 服务的uuid
+     */
+    public final static String UUID_SERVER = "0000FFE0-0000-1000-8000-00805F9B34FB";
+    /**
+     * write
+     */
+    public final static String UUID_WRITE = "0000FFE1-0000-1000-8000-00805F9B34FB";
+
+    /**
+     * Notify
+     */
+    public final static String UUID_NOTIFY = "0000FFE2-0000-1000-8000-00805F9B34FB";
+
+    /**
+     * Write && Notify ( APP与BLE进行Inet交互的UUID) 独享
+     */
+    public final static String UUID_WRITE_NOTIFY = "0000FFE3-0000-1000-8000-00805F9B34FB";
+
     public AdBleDevice mAdBleDevice;
 
     private Handler mHandler = new Handler(Looper.getMainLooper()) {
@@ -101,26 +122,29 @@ public class PhonePeripheralActivity extends AppCompatActivity implements View.O
                     bytes[j] = (byte) Integer.parseInt(data.substring(i, i + 2), 16);
                     j++;
                 }
-                AdCharacteristic adCharacteristic = AdCharacteristic.newBuilder().setReadStatus(true).setWriteStatus(true).setNotifyStatus(true).build(UUID_CHARACTERISTIC_1);
-                AdGattService adGattService = AdGattService.newBuilder().addAdCharacteristic(adCharacteristic).build(UUID_SERVER_1);
+                AdCharacteristic adCharacteristic1 = AdCharacteristic.newBuilder().setReadStatus(true).setWriteStatus(true).setNotifyStatus(false).build(UUID_WRITE);
+                AdCharacteristic adCharacteristic2 = AdCharacteristic.newBuilder().setReadStatus(false).setWriteStatus(false).setNotifyStatus(true).build(UUID_NOTIFY);
+                AdCharacteristic adCharacteristic3 = AdCharacteristic.newBuilder().setReadStatus(true).setWriteStatus(true).setNotifyStatus(true).build(UUID_WRITE_NOTIFY);
+                AdGattService adGattService = AdGattService.newBuilder().addAdCharacteristic(adCharacteristic1).addAdCharacteristic(adCharacteristic2).addAdCharacteristic(adCharacteristic3)
+                        .build(UUID_SERVER);
 //                AdBleValueBean adBleValueBean = AdBleValueBean.parseAdBytes(new byte[]{});//通过广播数据生成广播对象
                 AdBleValueBean adBleValueBean = AdBleValueBean.newBuilder().addGattService(adGattService)//只做广播可免除
 //                        .setConnectable(false)//是否可连接,默认可连接
-                        .addAdServiceUuid(adUUID + UUID_SUFFIX).setTimeoutMillis(0)//一直广播
+                        .addAdServiceUuid(UUID_SERVER_BROADCAST).setTimeoutMillis(0)//一直广播
                         .setIncludeTxPowerLevel(false)//不广播功耗
                         .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY)//低延迟
-                        .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_ULTRA_LOW)//发射功率极低
+                        .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_HIGH)//发射功率高
                         .addManufacturerData(Integer.parseInt(dataId, 16), bytes).build();
                 XBleManager.getInstance().setOnBleAdvertiserConnectListener(this);//设置广播的监听
-                int adId = XBleManager.getInstance().startAdvertiseData(adBleValueBean);
+                XBleManager.getInstance().startAdvertiseData(adBleValueBean);
             }
         } else if (id == R.id.btn_stop_ad) {//停止广播
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                XBleManager.getInstance().stopAdvertiseData(-1);
+                XBleManager.getInstance().stopAdvertiseData();
                 mListData.add(0, TimeUtils.getCurrentTimeStr() + "停止广播");
                 mHandler.sendEmptyMessage(REFRESH_DATA);
             }
-        } else if (id == R.id.btn_send_data) {//停止广播
+        } else if (id == R.id.btn_send_data) {//发送数据
             String data = et_send_data.getText().toString().trim();
             byte[] bytes = new byte[data.length() >> 1];
             int j = 0;
@@ -128,11 +152,45 @@ public class PhonePeripheralActivity extends AppCompatActivity implements View.O
                 bytes[j] = (byte) Integer.parseInt(data.substring(i, i + 2), 16);
                 j++;
             }
-            if (mAdBleDevice != null ) {
-                mAdBleDevice.sendData(new SendDataBean(bytes, UUID.fromString(UUID_CHARACTERISTIC_1), XBleStaticConfig.WRITE_DATA, UUID.fromString(UUID_SERVER_1)));
+            byte[] bytes1 = sendMcuDataFormat(bytes);
+            if (mAdBleDevice != null) {
+                mAdBleDevice.sendData(new SendDataBean(bytes1, UUID.fromString(UUID_NOTIFY), XBleStaticConfig.WRITE_DATA, UUID.fromString(UUID_SERVER)));
             }
         }
 
+    }
+
+    /**
+     * 通用的设置指令发送的数据格式(A7)
+     *
+     * @param data 数据内容(最大15byte)(包含指令)
+     * @return 可发送的数据格式
+     */
+    byte[] sendMcuDataFormat(byte[] data) {
+        int length = data.length;
+        byte sum = 0;
+        byte[] cmdByte = new byte[length + 6];//加上长度,包头,包尾,校验和,2个cid
+        cmdByte[0] = (byte) 0xA7;
+        cmdByte[1] = 0x00;
+        cmdByte[2] = 0x31;
+        cmdByte[3] = (byte) length;
+        System.arraycopy(data, 0, cmdByte, 4, data.length);
+        sum = cmdSum(cmdByte);
+        cmdByte[cmdByte.length - 2] = sum;
+        cmdByte[cmdByte.length - 1] = 0x7A;
+        return cmdByte;
+    }
+
+    /**
+     * 校验累加,从1开始加
+     */
+    private static byte cmdSum(byte[] data) {
+        byte sum = 0;
+        for (int i = 1; i < data.length; i++) {
+            sum += data[i];
+        }
+
+        return sum;
     }
 
     private void initData() {
@@ -157,16 +215,15 @@ public class PhonePeripheralActivity extends AppCompatActivity implements View.O
     //---------------------广播--------------------------------
 
     @Override
-    public void onStartAdSuccess(int adId, AdvertiseSettings advertiseSettings) {
+    public void onStartAdSuccess( AdvertiseSettings advertiseSettings) {
         if (advertiseSettings != null)
             BleLog.i("广播成功:" + advertiseSettings.toString());
-        mListData.add(0, TimeUtils.getCurrentTimeStr() + "广播成功:" + adId);
+        mListData.add(0, TimeUtils.getCurrentTimeStr() );
         mHandler.sendEmptyMessage(REFRESH_DATA);
     }
 
 
     /**
-     * @param adId
      * @param errorCode 错误码:-1代表获取蓝牙对象为null
      *                  {@link android.bluetooth.le.AdvertiseCallback#ADVERTISE_FAILED_DATA_TOO_LARGE}//广播数据超过31 byte
      *                  {@link android.bluetooth.le.AdvertiseCallback#ADVERTISE_FAILED_TOO_MANY_ADVERTISERS}//没有装载广播对象
@@ -174,7 +231,7 @@ public class PhonePeripheralActivity extends AppCompatActivity implements View.O
      *                  {@link android.bluetooth.le.AdvertiseCallback#ADVERTISE_FAILED_INTERNAL_ERROR}//低层内部错误
      */
     @Override
-    public void onStartAdFailure(int adId, int errorCode) {
+    public void onStartAdFailure( int errorCode) {
         String errData = "";
         switch (errorCode) {
 
@@ -201,15 +258,15 @@ public class PhonePeripheralActivity extends AppCompatActivity implements View.O
     }
 
     @Override
-    public void onStopAdSuccess(int adId) {
-        BleLog.i("停止广播成功:" + adId);
-        mListData.add(0, TimeUtils.getCurrentTimeStr() + "停止广播成功:" + adId);
+    public void onStopAdSuccess() {
+        BleLog.i("停止广播成功:");
+        mListData.add(0, TimeUtils.getCurrentTimeStr() + "停止广播成功:" );
         mHandler.sendEmptyMessage(REFRESH_DATA);
     }
 
 
     @Override
-    public void onStopAdFailure(int adId, int errorCode) {
+    public void onStopAdFailure( int errorCode) {
         mListData.add(0, TimeUtils.getCurrentTimeStr() + "停止广播失败:" + errorCode);
         mHandler.sendEmptyMessage(REFRESH_DATA);
     }
@@ -239,6 +296,7 @@ public class PhonePeripheralActivity extends AppCompatActivity implements View.O
 
     @Override
     public void onAdDisConnected(String mac, int code) {
+        mAdBleDevice = null;
         mListData.add(0, TimeUtils.getCurrentTimeStr() + "手机被断开连接:" + mac);
         mHandler.sendEmptyMessage(REFRESH_DATA);
     }

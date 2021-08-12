@@ -59,8 +59,8 @@ public class PhoneCentralActivity extends AppCompatActivity implements View.OnCl
     private String mBleName = "",mBleMac="";
     private BleDevice mBleDevice;
     private String mConnectMac;
-    private String mWriteUuid=PhonePeripheralActivity.UUID_CHARACTERISTIC_1;
-    private String mServiceUuid=PhonePeripheralActivity.UUID_SERVER_1;
+    private String mWriteUuid=PhonePeripheralActivity.UUID_WRITE;
+    private String mServiceUuid=PhonePeripheralActivity.UUID_SERVER;
 
     private Handler mHandler = new Handler(Looper.getMainLooper()) {
         @Override
@@ -347,7 +347,7 @@ public class PhoneCentralActivity extends AppCompatActivity implements View.OnCl
 //                {@link BluetoothGatt#CONNECTION_PRIORITY_BALANCED}默认
 //                {@link BluetoothGatt#CONNECTION_PRIORITY_HIGH}高功率,提高传输速度
 //                {@link BluetoothGatt#CONNECTION_PRIORITY_LOW_POWER}低功率,传输速度减慢,更省电
-                mBleDevice.setConnectPriority(BluetoothGatt.CONNECTION_PRIORITY_BALANCED);//设置ble交互间隔,需要ble设备支持
+                mBleDevice.setConnectPriority(BluetoothGatt.CONNECTION_PRIORITY_HIGH);//设置ble交互间隔,需要ble设备支持
             }
 
             mBleDevice.setOnNotifyDataListener(new OnNotifyDataListener() {

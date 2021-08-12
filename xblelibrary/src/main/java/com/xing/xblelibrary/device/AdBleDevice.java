@@ -33,6 +33,7 @@ public final class AdBleDevice implements OnCharacteristicRequestListener {
 
     private final int SEND_DATA_KEY = 1;
     private int mSendDataInterval = 10;
+    private int mErrRepeatTimes=3;
     private OnNotifyDataListener mOnNotifyDataListener;
     private BluetoothGattServer mBluetoothGattServer;
     private BluetoothDevice mBluetoothDevice;
@@ -93,6 +94,7 @@ public final class AdBleDevice implements OnCharacteristicRequestListener {
      * @param notice 断开后是否需要系统回调通知
      */
     public final void disconnect(boolean notice) {
+        mSendNextMessage=true;
         if (mBluetoothGattServer != null) {
             synchronized (BluetoothGatt.class) {
                 if (mBluetoothGattServer != null) {
@@ -115,6 +117,7 @@ public final class AdBleDevice implements OnCharacteristicRequestListener {
      * 断开连接
      */
     public final void disconnect() {
+
         disconnect(true);
     }
 
@@ -189,6 +192,7 @@ public final class AdBleDevice implements OnCharacteristicRequestListener {
         }
     }
 
+    private int mSendErr=0;
 
     private final Handler mHandler = new Handler(Looper.getMainLooper()) {
         @Override
@@ -198,9 +202,12 @@ public final class AdBleDevice implements OnCharacteristicRequestListener {
                     SendDataBean sendDataBean = mLinkedList.pollLast();
                     if (sendDataBean != null) {
                         boolean sendStatus = sendCmd(sendDataBean.getHex(), sendDataBean.getUuid(), sendDataBean.getType(), sendDataBean.getUuidService());
-                        if (!sendStatus) {//发送失败,重新加入到发送队列
-                            mLinkedList.addLast(sendDataBean);
-                        }
+//                        if (!sendStatus&&mSendErr<mErrRepeatTimes) {//发送失败,重新加入到发送队列
+//                            mSendErr++;
+//                            mLinkedList.addLast(sendDataBean);
+//                        }else {
+//                            mSendErr=0;
+//                        }
                         mHandler.sendEmptyMessageDelayed(SEND_DATA_KEY, mSendDataInterval);//设置间隔,避免发送失败
                     } else {
                         mHandler.sendEmptyMessage(SEND_DATA_KEY);//没有需要发送的数据,不需要间隔
@@ -241,7 +248,13 @@ public final class AdBleDevice implements OnCharacteristicRequestListener {
                     if (hex != null) {
                         mCharacteristic.setValue(hex);
                     }
-                    mCharacteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
+                    int properties = mCharacteristic.getProperties();
+                    if ((properties & BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE) != 0) {
+                        //写,无回复 WRITE_TYPE_NO_RESPONSE
+                        mCharacteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
+                    } else {
+                        mCharacteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
+                    }
                     switch (type) {
                         case XBleStaticConfig.READ_DATA:
                             sendOk = mBluetoothGattServer.sendResponse(mBluetoothDevice, 0, BluetoothGatt.GATT_SUCCESS, 0, mCharacteristic.getValue());
@@ -284,6 +297,13 @@ public final class AdBleDevice implements OnCharacteristicRequestListener {
         mSendDataInterval = interval;
     }
 
+    /**
+     * 发送失败后重发次数
+     * @param errRepeatTimes
+     */
+    public void setErrRepeatTimes(int errRepeatTimes) {
+        mErrRepeatTimes = errRepeatTimes;
+    }
 
     public BluetoothDevice getBluetoothDevice() {
         return mBluetoothDevice;

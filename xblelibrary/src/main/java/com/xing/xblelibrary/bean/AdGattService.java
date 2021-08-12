@@ -55,7 +55,7 @@ public class AdGattService {
 
             String uuidCharacteristic = "";
             if (adCharacteristic != null) {
-                adCharacteristic.getBluetoothGattCharacteristic().getUuid();
+                uuidCharacteristic=adCharacteristic.getBluetoothGattCharacteristic().getUuid().toString();
             }
             mCharacteristicMap.put(uuidCharacteristic, adCharacteristic);
             return this;
