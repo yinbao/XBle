@@ -1330,6 +1330,7 @@ public class XBleServer extends Service {
         if (mBluetoothGattServer != null) {
             mBluetoothGattServer.clearServices();
         }
+        stopAdvertiseData();
         BluetoothLeAdvertiser bluetoothLeAdvertiser = mBluetoothAdapter.getBluetoothLeAdvertiser();
         if (bluetoothLeAdvertiser == null) {
             if (listener != null) {

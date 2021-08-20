@@ -173,9 +173,9 @@ public final class BleDevice {
     private void sendOpenNotify(UUID uuidService, UUID uuidNotify) {
         mLinkedListNotify.addFirst(new SendDataBean(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE, uuidNotify, XBleStaticConfig.NOTICE_DATA, uuidService));
         if (mLinkedListNotify.size() <= 1) {
+            mHandler.removeMessages(SEND_DATA_KEY);
             SendDataBean sendDataBean = mLinkedListNotify.getLast();
             sendCmd(sendDataBean.getHex(), sendDataBean.getUuid(), sendDataBean.getType(), sendDataBean.getUuidService());
-            mHandler.removeMessages(SEND_DATA_KEY);
         }
     }
 
