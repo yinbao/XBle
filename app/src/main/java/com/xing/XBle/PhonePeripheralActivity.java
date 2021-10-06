@@ -218,7 +218,7 @@ public class PhonePeripheralActivity extends AppCompatActivity implements View.O
     public void onStartAdSuccess( AdvertiseSettings advertiseSettings) {
         if (advertiseSettings != null)
             BleLog.i("广播成功:" + advertiseSettings.toString());
-        mListData.add(0, TimeUtils.getCurrentTimeStr() );
+        mListData.add(0, TimeUtils.getCurrentTimeStr()+"广播成功");
         mHandler.sendEmptyMessage(REFRESH_DATA);
     }
 
