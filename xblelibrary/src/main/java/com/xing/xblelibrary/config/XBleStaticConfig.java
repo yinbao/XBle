@@ -89,6 +89,72 @@ public class XBleStaticConfig {
     public static final int DISCONNECT_CODE_ERR_NO_CONNECT=-3;
 
 
+    //---------------连接错误码---------------
+    /* Success code and error codes */
+//            #define  GATT_SUCCESS                        0x0000
+//            #define  GATT_INVALID_HANDLE                 0x0001
+//            #define  GATT_READ_NOT_PERMIT                0x0002
+//            #define  GATT_WRITE_NOT_PERMIT               0x0003
+//            #define  GATT_INVALID_PDU                    0x0004
+//            #define  GATT_INSUF_AUTHENTICATION           0x0005
+//            #define  GATT_REQ_NOT_SUPPORTED              0x0006
+//            #define  GATT_INVALID_OFFSET                 0x0007
+//            #define  GATT_INSUF_AUTHORIZATION            0x0008
+//            #define  GATT_PREPARE_Q_FULL                 0x0009
+//            #define  GATT_NOT_FOUND                      0x000a
+//            #define  GATT_NOT_LONG                       0x000b
+//            #define  GATT_INSUF_KEY_SIZE                 0x000c
+//            #define  GATT_INVALID_ATTR_LEN               0x000d
+//            #define  GATT_ERR_UNLIKELY                   0x000e
+//            #define  GATT_INSUF_ENCRYPTION               0x000f
+//            #define  GATT_UNSUPPORT_GRP_TYPE             0x0010
+//            #define  GATT_INSUF_RESOURCE                 0x0011
+//            #define  GATT_ILLEGAL_PARAMETER              0x0087
+//            #define  GATT_NO_RESOURCES                   0x0080
+//            #define  GATT_INTERNAL_ERROR                 0x0081
+//            #define  GATT_WRONG_STATE                    0x0082
+//            #define  GATT_DB_FULL                        0x0083
+//            #define  GATT_BUSY                           0x0084
+//            #define  GATT_ERROR                          0x0085
+//            #define  GATT_CMD_STARTED                    0x0086
+//            #define  GATT_PENDING                        0x0088
+//            #define  GATT_AUTH_FAIL                      0x0089
+//            #define  GATT_MORE                           0x008a
+//            #define  GATT_INVALID_CFG                    0x008b
+//            #define  GATT_SERVICE_STARTED                0x008c
+//            #define  GATT_ENCRYPED_MITM                  GATT_SUCCESS
+//            #define  GATT_ENCRYPED_NO_MITM               0x008d
+//            #define  GATT_NOT_ENCRYPTED                  0x008e
+//
+//            #define  GATT_RSP_ERROR                      0x01
+//            #define  GATT_REQ_MTU                        0x02
+//            #define  GATT_RSP_MTU                        0x03
+//            #define  GATT_REQ_FIND_INFO                  0x04
+//            #define  GATT_RSP_FIND_INFO                  0x05
+//            #define  GATT_REQ_FIND_TYPE_VALUE            0x06
+//            #define  GATT_RSP_FIND_TYPE_VALUE            0x07
+//            #define  GATT_REQ_READ_BY_TYPE               0x08
+//            #define  GATT_RSP_READ_BY_TYPE               0x09
+//            #define  GATT_REQ_READ                       0x0A
+//            #define  GATT_RSP_READ                       0x0B
+//            #define  GATT_REQ_READ_BLOB                  0x0C
+//            #define  GATT_RSP_READ_BLOB                  0x0D
+//            #define  GATT_REQ_READ_MULTI                 0x0E
+//            #define  GATT_RSP_READ_MULTI                 0x0F
+//            #define  GATT_REQ_READ_BY_GRP_TYPE           0x10
+//            #define  GATT_RSP_READ_BY_GRP_TYPE           0x11
+//            #define  GATT_REQ_WRITE                      0x12
+//            #define  GATT_RSP_WRITE                      0x13
+//            #define  GATT_CMD_WRITE                      0x52
+//            #define  GATT_REQ_PREPARE_WRITE              0x16
+//            #define  GATT_RSP_PREPARE_WRITE              0x17
+//            #define  GATT_REQ_EXEC_WRITE                 0x18
+//            #define  GATT_RSP_EXEC_WRITE                 0x19
+//            #define  GATT_HANDLE_VALUE_NOTIF             0x1B
+//            #define  GATT_HANDLE_VALUE_IND               0x1D
+//            #define  GATT_HANDLE_VALUE_CONF              0x1E
+//            #define  GATT_SIGN_CMD_WRITE                 0xD2
+
 
     //------------广播解析相关------------
     public static final int DATA_TYPE_FLAGS = 0x01;
@@ -108,6 +174,9 @@ public class XBleStaticConfig {
     public static final int DATA_TYPE_SERVICE_SOLICITATION_UUIDS_32_BIT = 0x1F;
     public static final int DATA_TYPE_SERVICE_SOLICITATION_UUIDS_128_BIT = 0x15;
     public static final int DATA_TYPE_MANUFACTURER_SPECIFIC_DATA = 0xFF;
+
+
+
 
 
 }
