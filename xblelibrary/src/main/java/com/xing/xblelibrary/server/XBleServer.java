@@ -641,7 +641,7 @@ public class XBleServer extends Service {
      *
      * @param address 连接的设备地址
      */
-    private synchronized void connectBleDevice(String address, boolean connectable) {
+    private synchronized void connectBleDevice(String address, boolean connectaBle) {
         if (!mBluetoothAdapter.isEnabled()) {
             BleLog.e(TAG, "蓝牙未开启.");
             bleClose();
@@ -653,7 +653,7 @@ public class XBleServer extends Service {
             return;
         }
 
-        if (!connectable) {
+        if (!connectaBle) {
             runOnMainThread(() -> {
                 if (mBleScanConnectListener != null) {
                     mBleScanConnectListener.onDisConnected(address, XBleStaticConfig.DISCONNECT_CODE_ERR_NO_CONNECT);
@@ -1300,11 +1300,10 @@ public class XBleServer extends Service {
                             String mac = gatt.getDevice().getAddress().toUpperCase();
 //                            BleLog.i("监听系统连接成功:" + mac);
                             synchronized (mBleObjectMap) {
-                                if (mBleObjectMap.containsKey(mac)) {
-                                    BleDevice mConnectBleObject = mBleObjectMap.get(mac);
-                                    if (mConnectBleObject != null) {
-                                        mConnectBleObject.disconnect(false);
-                                    }
+                                BleDevice bleDevice = mBleObjectMap.get(address);
+                                if (bleDevice!=null){
+                                    //已连接,并且已保存
+                                    return;
                                 }
                                 BleDevice mDevice = new BleDevice(gatt, mac);
                                 mBleObjectMap.put(mac, mDevice);
@@ -1452,6 +1451,11 @@ public class XBleServer extends Service {
                     if (mConnectGatt == null && mAutoMonitorSystemConnectBle) {
                         //当前不在连接状态
                         String address = device.getAddress();
+                        BleDevice bleDevice = mBleObjectMap.get(address);
+                        if (bleDevice!=null){
+                            //已连接
+                            return;
+                        }
                         connectDevice(address);//手机作为中央,去连接外围设备
 
                     }
