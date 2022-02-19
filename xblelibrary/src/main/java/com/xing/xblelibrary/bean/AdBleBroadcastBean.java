@@ -25,14 +25,14 @@ import androidx.annotation.RequiresApi;
  * 发出广播的中心设备
  */
 @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
-public class AdBleValueBean {
+public class AdBleBroadcastBean {
 
     private List<BluetoothGattService> mBluetoothGattServiceList;
 
     private AdvertiseSettings mAdvertiseSettings = null;
     private AdvertiseData mAdvertiseData = null;
 
-    private AdBleValueBean(AdvertiseSettings advertiseSettings, AdvertiseData advertiseData, Map<String, AdGattService> gattServiceMap) {
+    private AdBleBroadcastBean(AdvertiseSettings advertiseSettings, AdvertiseData advertiseData, Map<String, AdGattService> gattServiceMap) {
         mAdvertiseSettings = advertiseSettings;
         mAdvertiseData = advertiseData;
         if (gattServiceMap != null) {
@@ -251,7 +251,7 @@ public class AdBleValueBean {
          * 广播回应包最大为:31 byte
          * 大部分手机广播数据会拼接回应包,所以广播数据为:62 byte
          */
-        public AdBleValueBean build() {
+        public AdBleBroadcastBean build() {
             settingsBuilder.setAdvertiseMode(mAdvertiseMode);
             settingsBuilder.setConnectable(mConnectable);
             settingsBuilder.setTimeout(mTimeoutMillis);
@@ -289,7 +289,7 @@ public class AdBleValueBean {
                 }
             }
 
-            return new AdBleValueBean(settingsBuilder.build(), dataBuilder.build(), mGattServiceMap);
+            return new AdBleBroadcastBean(settingsBuilder.build(), dataBuilder.build(), mGattServiceMap);
         }
 
 
@@ -300,7 +300,7 @@ public class AdBleValueBean {
      * 通过广播数据生成广播对象
      * @param scanRecord 设备广播数据
      */
-    public static AdBleValueBean parseAdBytes(byte[] scanRecord) {
+    public static AdBleBroadcastBean parseAdBytes(byte[] scanRecord) {
         if (scanRecord == null) {
             return null;
         }

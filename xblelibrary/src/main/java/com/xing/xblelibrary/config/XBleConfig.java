@@ -1,6 +1,9 @@
 package com.xing.xblelibrary.config;
 
 
+import com.xing.xblelibrary.XBleManager;
+import com.xing.xblelibrary.utils.XBleL;
+
 /**
  * xing<br>
  * 2021/07/21<br>
@@ -43,16 +46,19 @@ public class XBleConfig {
     }
 
     /**
-     * 设置最大连接数据
+     * 设置最大连接数据,系统最大支持,包含其他APP连接的BLE数量
      *
-     * @param connectMax 最大连接数(1~7)
+     * @param connectMax 最大连接数(1~7),默认值为:7
      */
     public XBleConfig setConnectMax(int connectMax) {
-        if (connectMax > 7)
+        if (connectMax > 7){
+            XBleL.e("设置的连接数已超过系统限制,自动修改为最大值:7");
             connectMax = 7;
+        }
         if (connectMax <= 0)
             connectMax = 1;
         this.mConnectMax = connectMax;
+        XBleManager.getInstance().setConnectMax(connectMax);
         return this;
     }
 

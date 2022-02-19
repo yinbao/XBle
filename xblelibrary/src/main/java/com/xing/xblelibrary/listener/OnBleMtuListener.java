@@ -8,7 +8,7 @@ public interface OnBleMtuListener {
 
     /**
      * MTU
-     * @param mtu
+     * @param mtu 吞吐量(23~517)
      */
     void OnMtu(int mtu);
 

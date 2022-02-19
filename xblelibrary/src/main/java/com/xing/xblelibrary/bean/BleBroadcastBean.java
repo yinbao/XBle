@@ -7,8 +7,9 @@ import android.os.Build;
 import android.os.ParcelUuid;
 
 import com.xing.xblelibrary.utils.BleBroadcastUtils;
-import com.xing.xblelibrary.utils.BleLog;
+import com.xing.xblelibrary.utils.XBleL;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
@@ -19,8 +20,8 @@ import androidx.annotation.RequiresApi;
  * 蓝牙广播内容bean<br>
  * 搜索到的外围设备
  */
-public class BleValueBean {
-    private static String TAG = BleValueBean.class.getName();
+public class BleBroadcastBean {
+    private static String TAG = BleBroadcastBean.class.getName();
     private BluetoothDevice mDevice;
     private byte[] mScanRecord;
     private int mRssi;
@@ -32,9 +33,9 @@ public class BleValueBean {
     /**
      * 是否允许连接
      */
-    private boolean mConnectable=true;
+    private boolean mConnectBle =true;
 
-    public BleValueBean(BluetoothDevice device, int rssi, byte[] scanRecord) {
+    public BleBroadcastBean(BluetoothDevice device, int rssi, byte[] scanRecord) {
         this.mName = device.getName();
         mDevice = device;
         mRssi = rssi;
@@ -44,13 +45,13 @@ public class BleValueBean {
         mParcelUuids = mBleBroadcastUtils.getServiceUuids();
         boolean init = init();
         if (!init) {
-            BleLog.e("搜索到的设备初始化异常");
+            XBleL.e("搜索到的设备初始化异常");
         }
     }
 
 
     @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
-    public BleValueBean(ScanResult scanResult) {
+    public BleBroadcastBean(ScanResult scanResult) {
         mDevice = scanResult.getDevice();
         mac = scanResult.getDevice().getAddress();
         mRssi = scanResult.getRssi();
@@ -60,14 +61,11 @@ public class BleValueBean {
             mScanRecord = scanRecord.getBytes();
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 //当前广播是否允许连接
-                mConnectable=scanResult.isConnectable();
+                mConnectBle =scanResult.isConnectable();
             }
             mBleBroadcastUtils = new BleBroadcastUtils(mScanRecord);
             mParcelUuids = mBleBroadcastUtils.getServiceUuids();
             boolean init = init();
-            if (!init) {
-//                BleLog.i("搜索到设备自定义厂商数据异常");
-            }
 
         }
     }
@@ -78,17 +76,12 @@ public class BleValueBean {
      */
     public boolean init() {
         if (mBleBroadcastUtils == null) {
-            BleLog.e(TAG, "BleBroadcastUtils未初始化");
+            XBleL.e(TAG, "BleBroadcastUtils未初始化");
             return false;
         }
         List<byte[]> mDatas = mBleBroadcastUtils.getManufacturerSpecificData();
-//        byte[] moveData = mBleBroadcastUtils.getManufacturerByteMove();
-//        BleLog.i(TAG, "更多的厂商自定义数据:" + mac + "||" + BleStrUtils.byte2HexStr(moveData));
         manufacturerData = mDatas;
-        if (mDatas == null || mDatas.isEmpty()) {
-            return false;
-        }
-        return true;
+        return mDatas != null && !mDatas.isEmpty();
     }
 
 
@@ -105,10 +98,6 @@ public class BleValueBean {
         return mRssi;
     }
 
-    public void setRssi(int rssi) {
-        mRssi = rssi;
-    }
-
     public String getName() {
         return mName;
     }
@@ -117,8 +106,8 @@ public class BleValueBean {
         return mac;
     }
 
-    public boolean isConnectable() {
-        return mConnectable;
+    public boolean isConnectBle() {
+        return mConnectBle;
     }
 
     public List<byte[]> getManufacturerDataList() {
@@ -126,7 +115,7 @@ public class BleValueBean {
     }
 
     @Nullable
-    public byte[] getManufacturerData() {
+    public byte[] getManufacturerFirstData() {
         if (manufacturerData.isEmpty()) {
             return null;
         }
@@ -140,8 +129,8 @@ public class BleValueBean {
 
     @Override
     public boolean equals(@Nullable Object obj) {
-        if (obj instanceof BleValueBean) {
-            return equals((BleValueBean) obj);
+        if (obj instanceof BleBroadcastBean) {
+            return equals((BleBroadcastBean) obj);
         } else if (obj instanceof String) {
             return equals((String) obj);
         }
@@ -155,7 +144,7 @@ public class BleValueBean {
      * @param mBleValueBean BleValueBean
      * @return true是, false不是
      */
-    private boolean equals(BleValueBean mBleValueBean) {
+    private boolean equals(BleBroadcastBean mBleValueBean) {
         BluetoothDevice mNewDevice = mBleValueBean.getDevice();
         if (mDevice != null) {
             if (mDevice == mBleValueBean.getDevice() || equals(mNewDevice.getAddress())) {
@@ -203,6 +192,12 @@ public class BleValueBean {
     }
 
 
+    @Override
+    public String toString() {
+        return "BleBroadcastBean{" + "mDevice=" + mDevice + ", mScanRecord=" + Arrays
+                .toString(mScanRecord) + ", mRssi=" + mRssi + ", mName='" + mName + '\'' + ", mac='" + mac + '\'' + ", manufacturerData=" + manufacturerData + ", mParcelUuids=" + mParcelUuids + ", " +
+                "mBleBroadcastUtils=" + mBleBroadcastUtils + ", mConnectable=" + mConnectBle + '}';
+    }
 }
 
 

@@ -11,10 +11,10 @@ import android.os.Looper;
 import android.os.Message;
 
 import com.xing.xblelibrary.config.XBleStaticConfig;
-import com.xing.xblelibrary.listener.OnCharacteristicRequestListener;
-import com.xing.xblelibrary.listener.OnNotifyDataListener;
-import com.xing.xblelibrary.listener.onDisConnectedListener;
-import com.xing.xblelibrary.utils.BleLog;
+import com.xing.xblelibrary.listener.OnBleCharacteristicRequestListener;
+import com.xing.xblelibrary.listener.OnBleNotifyDataListener;
+import com.xing.xblelibrary.listener.onBleDisConnectedListener;
+import com.xing.xblelibrary.utils.XBleL;
 import com.xing.xblelibrary.utils.MyBleDeviceUtils;
 
 import java.util.LinkedList;
@@ -28,13 +28,13 @@ import androidx.annotation.CallSuper;
  * BLE设备对象
  * 手机作为外围设备(被其他手机或者设备连接生成的对象)
  */
-public final class AdBleDevice implements OnCharacteristicRequestListener {
+public final class AdBleDevice implements OnBleCharacteristicRequestListener {
     protected static String TAG = AdBleDevice.class.getName();
 
     private final int SEND_DATA_KEY = 1;
     private int mSendDataInterval = 10;
     private int mErrRepeatTimes=3;
-    private OnNotifyDataListener mOnNotifyDataListener;
+    private OnBleNotifyDataListener mOnNotifyDataListener;
     private BluetoothGattServer mBluetoothGattServer;
     private BluetoothDevice mBluetoothDevice;
     /**
@@ -63,7 +63,7 @@ public final class AdBleDevice implements OnCharacteristicRequestListener {
      */
     private volatile boolean mSendNextMessage = true;
     private int mMtu=23;
-    private onDisConnectedListener mOnDisConnectedListener;
+    private onBleDisConnectedListener mOnDisConnectedListener;
 
 
     public AdBleDevice(BluetoothDevice device, BluetoothGattServer bluetoothGattServer) {
@@ -73,7 +73,7 @@ public final class AdBleDevice implements OnCharacteristicRequestListener {
         this.mName = device.getName();
         connectSuccess = true;
         mLinkedList = new LinkedList<>();
-        BleLog.i("连接成功:" + mac);
+        XBleL.i("连接成功:" + mac);
         init();
     }
 
@@ -110,7 +110,7 @@ public final class AdBleDevice implements OnCharacteristicRequestListener {
                 }
             }
         }
-        BleLog.e(TAG, "断开连接:" + mac);
+        XBleL.e(TAG, "断开连接:" + mac);
     }
 
     /**
@@ -127,7 +127,7 @@ public final class AdBleDevice implements OnCharacteristicRequestListener {
      */
     @CallSuper
     public void onDisConnected() {
-        BleLog.i("断开连接,清空发送队列");
+        XBleL.i("断开连接,清空发送队列");
         if (mOnDisConnectedListener != null) {
             mOnDisConnectedListener.onDisConnected();
         }
@@ -267,12 +267,12 @@ public final class AdBleDevice implements OnCharacteristicRequestListener {
                             break;
 
                     }
-                    BleLog.i(TAG, "type:" + type + " UUID=" + uuid + " || " + sendOk);
+                    XBleL.i(TAG, "type:" + type + " UUID=" + uuid + " || " + sendOk);
                 }
             }
             return sendOk;
         } catch (Exception e) {
-            BleLog.e(TAG, "读/写/异常:" + e.toString());
+            XBleL.e(TAG, "读/写/异常:" + e.toString());
             e.printStackTrace();
         }
         return sendOk;
@@ -317,11 +317,11 @@ public final class AdBleDevice implements OnCharacteristicRequestListener {
     //---------------
 
 
-    public void setOnDisConnectedListener(onDisConnectedListener onDisConnectedListener) {
+    public void setOnDisConnectedListener(onBleDisConnectedListener onDisConnectedListener) {
         mOnDisConnectedListener = onDisConnectedListener;
     }
 
-    public void setOnNotifyDataListener(OnNotifyDataListener onNotifyDataListener) {
+    public void setOnNotifyDataListener(OnBleNotifyDataListener onNotifyDataListener) {
         mOnNotifyDataListener = onNotifyDataListener;
     }
 }

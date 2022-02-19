@@ -14,15 +14,15 @@ import android.widget.EditText;
 import android.widget.ListView;
 
 import com.xing.xblelibrary.XBleManager;
-import com.xing.xblelibrary.bean.AdBleValueBean;
+import com.xing.xblelibrary.bean.AdBleBroadcastBean;
 import com.xing.xblelibrary.bean.AdCharacteristic;
 import com.xing.xblelibrary.bean.AdGattService;
 import com.xing.xblelibrary.config.XBleStaticConfig;
 import com.xing.xblelibrary.device.AdBleDevice;
 import com.xing.xblelibrary.device.SendDataBean;
 import com.xing.xblelibrary.listener.OnBleAdvertiserConnectListener;
-import com.xing.xblelibrary.listener.OnNotifyDataListener;
-import com.xing.xblelibrary.utils.BleLog;
+import com.xing.xblelibrary.listener.OnBleNotifyDataListener;
+import com.xing.xblelibrary.utils.XBleL;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -128,7 +128,7 @@ public class PhonePeripheralActivity extends AppCompatActivity implements View.O
                 AdGattService adGattService = AdGattService.newBuilder().addAdCharacteristic(adCharacteristic1).addAdCharacteristic(adCharacteristic2).addAdCharacteristic(adCharacteristic3)
                         .build(UUID_SERVER);
 //                AdBleValueBean adBleValueBean = AdBleValueBean.parseAdBytes(new byte[]{});//通过广播数据生成广播对象
-                AdBleValueBean adBleValueBean = AdBleValueBean.newBuilder().addGattService(adGattService)//只做广播可免除
+                AdBleBroadcastBean adBleValueBean = AdBleBroadcastBean.newBuilder().addGattService(adGattService)//只做广播可免除
 //                        .setConnectable(false)//是否可连接,默认可连接
                         .addAdServiceUuid(UUID_SERVER_BROADCAST).setTimeoutMillis(0)//一直广播
                         .setIncludeTxPowerLevel(false)//不广播功耗
@@ -217,7 +217,7 @@ public class PhonePeripheralActivity extends AppCompatActivity implements View.O
     @Override
     public void onStartAdSuccess( AdvertiseSettings advertiseSettings) {
         if (advertiseSettings != null)
-            BleLog.i("广播成功:" + advertiseSettings.toString());
+            XBleL.i("广播成功:" + advertiseSettings.toString());
         mListData.add(0, TimeUtils.getCurrentTimeStr()+"广播成功");
         mHandler.sendEmptyMessage(REFRESH_DATA);
     }
@@ -259,7 +259,7 @@ public class PhonePeripheralActivity extends AppCompatActivity implements View.O
 
     @Override
     public void onStopAdSuccess() {
-        BleLog.i("停止广播成功:");
+        XBleL.i("停止广播成功:");
         mListData.add(0, TimeUtils.getCurrentTimeStr() + "停止广播成功:" );
         mHandler.sendEmptyMessage(REFRESH_DATA);
     }
@@ -283,10 +283,10 @@ public class PhonePeripheralActivity extends AppCompatActivity implements View.O
         mHandler.sendEmptyMessage(REFRESH_DATA);
         mAdBleDevice = XBleManager.getInstance().getAdBleDevice(mac);
         if (mAdBleDevice != null) {
-            mAdBleDevice.setOnNotifyDataListener(new OnNotifyDataListener() {
+            mAdBleDevice.setOnNotifyDataListener(new OnBleNotifyDataListener() {
                 @Override
                 public void onNotifyData(BluetoothGattCharacteristic characteristic, byte[] data) {
-                    BleLog.i("中央设备返回的数据:" + BleStrUtils.byte2HexStr(data));
+                    XBleL.i("中央设备返回的数据:" + BleStrUtils.byte2HexStr(data));
                     mListData.add(0, TimeUtils.getCurrentTimeStr() + "UUID:" + characteristic.getUuid().toString() + "\n中央设备返回的数据:" + BleStrUtils.byte2HexStr(data));
                     mHandler.sendEmptyMessage(REFRESH_DATA);
                 }

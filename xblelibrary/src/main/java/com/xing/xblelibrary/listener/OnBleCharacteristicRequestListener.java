@@ -9,7 +9,7 @@ import android.bluetooth.BluetoothGattDescriptor;
  * 2019/11/18<br>
  * 透传数据接口
  */
-public interface OnCharacteristicRequestListener {
+public interface OnBleCharacteristicRequestListener {
 
 
     /**

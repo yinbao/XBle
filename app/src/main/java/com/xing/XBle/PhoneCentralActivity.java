@@ -19,13 +19,14 @@ import android.widget.EditText;
 import android.widget.ListView;
 
 import com.xing.xblelibrary.XBleManager;
-import com.xing.xblelibrary.bean.BleValueBean;
+import com.xing.xblelibrary.bean.BleBroadcastBean;
 import com.xing.xblelibrary.config.XBleStaticConfig;
 import com.xing.xblelibrary.device.BleDevice;
 import com.xing.xblelibrary.device.SendDataBean;
-import com.xing.xblelibrary.listener.OnBleScanConnectListener;
-import com.xing.xblelibrary.listener.OnNotifyDataListener;
-import com.xing.xblelibrary.utils.BleLog;
+import com.xing.xblelibrary.listener.OnBleConnectListener;
+import com.xing.xblelibrary.listener.OnBleNotifyDataListener;
+import com.xing.xblelibrary.listener.OnBleScanFilterListener;
+import com.xing.xblelibrary.utils.XBleL;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -42,7 +43,7 @@ import androidx.core.content.ContextCompat;
  * 2021/8/2<br>
  * 手机作为中央设备
  */
-public class PhoneCentralActivity extends AppCompatActivity implements View.OnClickListener, OnBleScanConnectListener {
+public class PhoneCentralActivity extends AppCompatActivity implements View.OnClickListener, OnBleConnectListener , OnBleScanFilterListener {
 
 
     private final int REFRESH_BLE = 1;
@@ -161,7 +162,8 @@ public class PhoneCentralActivity extends AppCompatActivity implements View.OnCl
         mListData = new ArrayList<>();
         mListAdapterData = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, mListData);
         mListViewData.setAdapter(mListAdapterData);
-        XBleManager.getInstance().setOnBleScanConnectListener(this);
+        XBleManager.getInstance().setOnBleConnectListener(this);
+        XBleManager.getInstance().setOnScanFilterListener(this);
 
     }
 
@@ -244,7 +246,7 @@ public class PhoneCentralActivity extends AppCompatActivity implements View.OnCl
      * 权限ok
      */
     protected void onPermissionsOk() {
-        XBleManager.getInstance().setOnBleScanConnectListener(this);//设置监听
+        XBleManager.getInstance().setOnScanFilterListener(this);//设置监听
         XBleManager.getInstance().startScan(1000);//开始搜索
     }
 
@@ -254,15 +256,15 @@ public class PhoneCentralActivity extends AppCompatActivity implements View.OnCl
         //开始扫描
         mBleName = et_filter_name.getText().toString().trim();
         mBleMac = et_filter_mac.getText().toString().trim();
-        BleLog.i("开始扫描");
+        XBleL.i("开始扫描");
         mListData.add(0, TimeUtils.getCurrentTimeStr() + "开始扫描");
         mHandler.sendEmptyMessage(REFRESH_DATA);
     }
 
     @Override
-    public void onScanning(BleValueBean data) {
+    public void onScanBleInfo(BleBroadcastBean data) {
         //扫描返回的结果,每发现一个设备就会回调一次
-        BleLog.i("扫描结果:" + data.getName() + " mac:" + data.getMac());
+        XBleL.i("扫描结果:" + data.getName() + " mac:" + data.getMac());
         if ((TextUtils.isEmpty(mBleName) || (data.getName() != null && data.getName().toUpperCase().contains(mBleName.toUpperCase())))
                 &&(TextUtils.isEmpty(mBleMac)||(data.getMac().replace(":","").contains(mBleMac)))) {
             String bleData = "Name=" + data.getName() + "\nMAC=" + data.getMac();
@@ -274,9 +276,9 @@ public class PhoneCentralActivity extends AppCompatActivity implements View.OnCl
     }
 
     @Override
-    public void onScanTimeOut() {
+    public void onScanComplete() {
         //扫描超时,当设置扫描时间为0时将不会触发此方法
-        BleLog.i("扫描超时");
+        XBleL.i("扫描超时");
         mListData.add(0, TimeUtils.getCurrentTimeStr() + "扫描超时");
         mHandler.sendEmptyMessage(REFRESH_DATA);
     }
@@ -284,7 +286,7 @@ public class PhoneCentralActivity extends AppCompatActivity implements View.OnCl
     @Override
     public void onScanErr(long time) {
         //扫描异常
-        BleLog.i("扫描太频繁,请在" + time + "ms后再进行扫描");
+        XBleL.i("扫描太频繁,请在" + time + "ms后再进行扫描");
         mListData.add(0, TimeUtils.getCurrentTimeStr() + "扫描太频繁,请在" + time + "ms后再进行扫描");
         mHandler.sendEmptyMessage(REFRESH_DATA);
     }
@@ -292,7 +294,7 @@ public class PhoneCentralActivity extends AppCompatActivity implements View.OnCl
     @Override
     public void onConnecting(String mac) {
         //连接中
-        BleLog.i("正在连接的设备:" + mac);
+        XBleL.i("正在连接的设备:" + mac);
         if (!mac.equalsIgnoreCase(mConnectMac)){
             return;
         }
@@ -306,7 +308,7 @@ public class PhoneCentralActivity extends AppCompatActivity implements View.OnCl
         //连接断开
         //code=-1 代表连接超时
         //code=-2 代表获取服务失败
-        BleLog.i("连接断开:" + mac + " 错误码:" + code);
+        XBleL.i("连接断开:" + mac + " 错误码:" + code);
         if (!mac.equalsIgnoreCase(mConnectMac)){
             return;
         }
@@ -318,7 +320,7 @@ public class PhoneCentralActivity extends AppCompatActivity implements View.OnCl
     @Override
     public void onConnectionSuccess(String mac) {
         //连接成功,需要获取服务成功之后才允许操作
-        BleLog.i("连接成功:" + mac);
+        XBleL.i("连接成功:" + mac);
         if (!mac.equalsIgnoreCase(mConnectMac)){
             return;
         }
@@ -329,7 +331,7 @@ public class PhoneCentralActivity extends AppCompatActivity implements View.OnCl
     @Override
     public void onServicesDiscovered(String mac) {
         //连接获取服务成功
-        BleLog.i("获取服务成功:" + mac);
+        XBleL.i("获取服务成功:" + mac);
         if (!mac.equalsIgnoreCase(mConnectMac)){
             return;
         }
@@ -350,12 +352,12 @@ public class PhoneCentralActivity extends AppCompatActivity implements View.OnCl
                 mBleDevice.setConnectPriority(BluetoothGatt.CONNECTION_PRIORITY_HIGH);//设置ble交互间隔,需要ble设备支持
             }
 
-            mBleDevice.setOnNotifyDataListener(new OnNotifyDataListener() {
+            mBleDevice.setOnNotifyDataListener(new OnBleNotifyDataListener() {
 
                 @Override
                 public void onNotifyData(BluetoothGattCharacteristic characteristic, byte[] data) {
                     //需要setNotify之后,并且ble返回了数据才会触发
-                    BleLog.i("ble返回的数据:" + BleStrUtils.byte2HexStr(data));
+                    XBleL.i("ble返回的数据:" + BleStrUtils.byte2HexStr(data));
                     mListData.add(0, TimeUtils.getCurrentTimeStr() + "Notify:" + characteristic.getUuid().toString() + "\n外围设备返回的数据:" + BleStrUtils.byte2HexStr(data));
                     mHandler.sendEmptyMessage(REFRESH_DATA);
                 }

@@ -1,9 +1,9 @@
 package com.xing.xblelibrary.listener;
 
 /**
- * 断开接口通知
+ * 连接断开接口
  */
-public interface onDisConnectedListener {
+public interface onBleDisConnectedListener {
 
     void onDisConnected();
 

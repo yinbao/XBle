@@ -3,8 +3,8 @@ package com.xing.xblelibrary.device;
 
 import android.bluetooth.BluetoothGattCharacteristic;
 
-import com.xing.xblelibrary.listener.OnNotifyDataListener;
-import com.xing.xblelibrary.listener.onDisConnectedListener;
+import com.xing.xblelibrary.listener.OnBleNotifyDataListener;
+import com.xing.xblelibrary.listener.onBleDisConnectedListener;
 
 import java.util.UUID;
 
@@ -16,7 +16,7 @@ import androidx.annotation.CallSuper;
  * 2021/07/21<br>
  * 设备对象抽象类
  */
-public abstract class BaseBleDeviceData implements onDisConnectedListener, OnNotifyDataListener {
+public abstract class BaseBleDeviceData implements onBleDisConnectedListener, OnBleNotifyDataListener {
     private static String TAG = BaseBleDeviceData.class.getName();
 
     private BleDevice mBleDevice;

@@ -8,19 +8,19 @@ import android.content.ServiceConnection;
 import android.os.Build;
 import android.os.IBinder;
 
-import com.xing.xblelibrary.bean.AdBleValueBean;
-import com.xing.xblelibrary.bean.BleValueBean;
+import com.xing.xblelibrary.bean.AdBleBroadcastBean;
+import com.xing.xblelibrary.bean.BleBroadcastBean;
 import com.xing.xblelibrary.config.XBleConfig;
 import com.xing.xblelibrary.device.AdBleDevice;
 import com.xing.xblelibrary.device.BleDevice;
 import com.xing.xblelibrary.listener.BleConnectListenerIm;
 import com.xing.xblelibrary.listener.OnBleAdvertiserConnectListener;
 import com.xing.xblelibrary.listener.OnBleConnectListener;
-import com.xing.xblelibrary.listener.OnBleScanConnectListener;
 import com.xing.xblelibrary.listener.OnBleScanFilterListener;
 import com.xing.xblelibrary.listener.OnBleStatusListener;
 import com.xing.xblelibrary.server.XBleServer;
 
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -112,19 +112,27 @@ public class XBleManager {
     }
 
     private void startService() {
-        if (bindIntent == null) {
-            bindIntent = new Intent(mContext, XBleServer.class);
-            mContext.startService(bindIntent);
+        try {
+            if (bindIntent == null) {
+                bindIntent = new Intent(mContext, XBleServer.class);
+                mContext.startService(bindIntent);
+            }
+            if (mFhrSCon != null)
+                mContext.bindService(bindIntent, mFhrSCon, Context.BIND_AUTO_CREATE);
+        } catch (Exception e) {
+            e.printStackTrace();
         }
-        if (mFhrSCon != null)
-            mContext.bindService(bindIntent, mFhrSCon, Context.BIND_AUTO_CREATE);
 
     }
 
     private void unbindService() {
-        if (mFhrSCon != null)
-            mContext.unbindService(mFhrSCon);
-        bindIntent = null;
+        try {
+            if (mFhrSCon != null)
+                mContext.unbindService(mFhrSCon);
+            bindIntent = null;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
 
@@ -215,20 +223,6 @@ public class XBleManager {
         }
     }
 
-    /**
-     * 搜索设备
-     *
-     * @param callback 扫描连接的回调接口
-     * @param timeOut  超时时间,ms
-     * @param scanUUID 扫描过滤的uuid
-     */
-    public void startScan(OnBleScanConnectListener callback, long timeOut, UUID... scanUUID) {
-        if (checkBluetoothServiceStatus()) {
-            setOnBleScanConnectListener(callback);
-            mXBleServer.scanLeDevice(timeOut, scanUUID);
-        }
-    }
-
 
     /**
      * 停止搜索
@@ -244,7 +238,7 @@ public class XBleManager {
      *
      * @param bleValueBean BleValueBean
      */
-    public void connectDevice(BleValueBean bleValueBean) {
+    public void connectDevice(BleBroadcastBean bleValueBean) {
         connectDevice(bleValueBean.getMac());
     }
 
@@ -317,24 +311,25 @@ public class XBleManager {
      *
      * @param onScanFilterListener OnScanFilterListener
      */
-    public void setOnScanFilterListener(OnBleScanFilterListener onScanFilterListener) {
+    public XBleManager setOnScanFilterListener(OnBleScanFilterListener onScanFilterListener) {
         if (checkBluetoothServiceStatus()) {
-            mXBleServer.setOnScanFilterListener(onScanFilterListener);
+            mXBleServer.setOnBleScanFilterListener(new WeakReference<>(onScanFilterListener).get());
         }
+        return this;
     }
 
 
     /**
-     * 设置扫描连接的接口
+     * 设置连接的接口
      *
      * @param listener OnCallbackBle
      */
-    public void setOnBleScanConnectListener(OnBleScanConnectListener listener) {
+    public XBleManager setOnBleConnectListener(OnBleConnectListener listener) {
         if (checkBluetoothServiceStatus()) {
-            mXBleServer.setOnBleScanConnectListener(listener);
+            mXBleServer.setOnBleConnectListener(new WeakReference<>(listener).get());
         }
+        return this;
     }
-
 
     /**
      * 设置前台服务相关参数
@@ -385,7 +380,7 @@ public class XBleManager {
      */
     public void setOnBleStatusListener(OnBleStatusListener listener) {
         if (checkBluetoothServiceStatus()) {
-            mXBleServer.setOnBleStatusListener(listener);
+            mXBleServer.setOnBleStatusListener(new WeakReference<>(listener).get());
         }
     }
 
@@ -395,7 +390,7 @@ public class XBleManager {
      * @param listener OnBleConnectListener
      */
     public void addBleConnectListener(OnBleConnectListener listener) {
-        BleConnectListenerIm.getInstance().addListListener(listener);
+        BleConnectListenerIm.getInstance().addListListener(new WeakReference<>(listener).get());
     }
 
     /**
@@ -404,7 +399,7 @@ public class XBleManager {
      * @param listener OnBleConnectListener
      */
     public void removeBleConnectListener(OnBleConnectListener listener) {
-        BleConnectListenerIm.getInstance().removeListener(listener);
+        BleConnectListenerIm.getInstance().removeListener(new WeakReference<>(listener).get());
     }
 
     /**
@@ -414,6 +409,17 @@ public class XBleManager {
         BleConnectListenerIm.getInstance().removeListenerAll();
     }
 
+
+    public void setConnectMax(int connectMax) {
+        if (mXBleServer != null) {
+            if (connectMax > 7) {
+                connectMax = 7;
+            }
+            if (connectMax <= 0)
+                connectMax = 1;
+            mXBleServer.setConnectMax(connectMax);
+        }
+    }
 
     //----------------广播-------------------
 
@@ -433,7 +439,7 @@ public class XBleManager {
      * @param adBleValueBean AdBleValueBean
      */
     @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
-    public void startAdvertiseData(AdBleValueBean adBleValueBean) {
+    public void startAdvertiseData(AdBleBroadcastBean adBleValueBean) {
         if (mOnBleAdvertiserConnectListener != null) {
             mOnBleAdvertiserConnectListener.onStartAdvertiser();
         }
@@ -445,7 +451,6 @@ public class XBleManager {
 
     /**
      * 关闭广播
-     *
      */
     @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
     public void stopAdvertiseData() {

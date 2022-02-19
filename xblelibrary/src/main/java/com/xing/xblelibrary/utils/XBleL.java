@@ -13,7 +13,7 @@ import java.util.Locale;
 /**
  * 打印日志工具
  */
-public class BleLog {
+public class XBleL {
     /**
      * 是否开启log日志
      */
@@ -148,7 +148,7 @@ public class BleLog {
         for (int i = 2; i < trace.length; i++) {
             StackTraceElement e = trace[i];
             String name = e.getClassName();
-            String l = BleLog.class.getName();
+            String l = XBleL.class.getName();
             if (!name.equals(l)) {
                 return --i;
             }

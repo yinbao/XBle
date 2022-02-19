@@ -7,7 +7,7 @@ import android.bluetooth.BluetoothGattCharacteristic;
  * 2021/07/21<br>
  * 透传数据接口
  */
-public interface OnNotifyDataListener {
+public interface OnBleNotifyDataListener {
 
 
     /**

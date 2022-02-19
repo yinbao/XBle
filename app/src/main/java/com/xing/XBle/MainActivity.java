@@ -8,14 +8,14 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 
+import com.xing.xblelibrary.XBleManager;
+import com.xing.xblelibrary.utils.XBleL;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
-
-import com.xing.xblelibrary.XBleManager;
-import com.xing.xblelibrary.utils.BleLog;
 
 public class MainActivity extends AppCompatActivity implements  View.OnClickListener {
 
@@ -25,8 +25,9 @@ public class MainActivity extends AppCompatActivity implements  View.OnClickList
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        initPermissions();//判断权限
         init();
-        BleLog.init(true);//开启日志
+        XBleL.init(true);//开启日志
         XBleManager.getXBleConfig()
                 .setConnectMax(7)//设置最大连接数据
                 .setAutoConnectSystemBle(false)//设置是否自动连接系统已连接的设备
@@ -34,9 +35,9 @@ public class MainActivity extends AppCompatActivity implements  View.OnClickList
         XBleManager.getInstance().init(getApplicationContext(), new XBleManager.onInitListener() {
             @Override
             public void onInitSuccess() {
-                initPermissions();//判断权限
             }
         });
+
     }
 
 

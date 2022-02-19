@@ -4,8 +4,7 @@ package com.xing.xblelibrary.listener;
 /**
  * 蓝牙状态接口
  */
-
-public interface OnBleStatusListener {
+public interface OnBleStatusListener  extends OnBleBaseListener{
 
     /**
      * 已开启蓝牙,在触发线程

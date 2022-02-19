@@ -12,7 +12,7 @@ import java.util.List;
  * 4,蓝牙关闭
  */
 
-public class BleConnectListenerIm extends BaseListenerIm<OnBleConnectListener> {
+public class BleConnectListenerIm extends BaseListenerIm<OnBleBaseListener> {
 
     private static class SingletonHolder {
         private static final BleConnectListenerIm INSTANCE = new BleConnectListenerIm();
@@ -25,11 +25,13 @@ public class BleConnectListenerIm extends BaseListenerIm<OnBleConnectListener> {
     /**
      * 连接断开
      */
-    public void onDisConnected(OnBleConnectListener callback, String mac, int code) {
-        synchronized (OnBleConnectListener.class) {
-            for (OnBleConnectListener observer : listListener) {
+    public void onDisConnected(OnBleBaseListener callback, String mac, int code) {
+        synchronized (OnBleBaseListener.class) {
+            for (OnBleBaseListener observer : listListener) {
                 if (observer != null && observer != callback)
-                    observer.onDisConnected(mac, code);
+                    if (observer instanceof OnBleConnectListener) {
+                        ((OnBleConnectListener) observer).onDisConnected(mac,code);
+                    }
             }
         }
     }
@@ -37,11 +39,13 @@ public class BleConnectListenerIm extends BaseListenerIm<OnBleConnectListener> {
     /**
      * 连接成功(还未发现服务)
      */
-    public void onConnectionSuccess(OnBleConnectListener callback, String mac) {
-        synchronized (OnBleConnectListener.class) {
-            for (OnBleConnectListener observer : listListener) {
+    public void onConnectionSuccess(OnBleBaseListener callback, String mac) {
+        synchronized (OnBleBaseListener.class) {
+            for (OnBleBaseListener observer : listListener) {
                 if (observer != null && observer != callback)
-                    observer.onConnectionSuccess(mac);
+                    if (observer instanceof OnBleConnectListener) {
+                        ((OnBleConnectListener) observer).onConnectionSuccess(mac);
+                    }
             }
         }
     }
@@ -49,11 +53,13 @@ public class BleConnectListenerIm extends BaseListenerIm<OnBleConnectListener> {
     /**
      * 连接成功(发现服务)
      */
-    public void onServicesDiscovered(OnBleConnectListener callback, String mac) {
-        synchronized (OnBleConnectListener.class) {
-            for (OnBleConnectListener observer : listListener) {
+    public void onServicesDiscovered(OnBleBaseListener callback, String mac) {
+        synchronized (OnBleBaseListener.class) {
+            for (OnBleBaseListener observer : listListener) {
                 if (observer != null && observer != callback)
-                    observer.onServicesDiscovered(mac);
+                    if (observer instanceof OnBleConnectListener) {
+                        ((OnBleConnectListener) observer).onServicesDiscovered(mac);
+                    }
             }
         }
     }
@@ -61,26 +67,26 @@ public class BleConnectListenerIm extends BaseListenerIm<OnBleConnectListener> {
     /**
      * 正在连接
      */
-    public void onConnecting(OnBleConnectListener callback, String mac) {
-        synchronized (OnBleConnectListener.class) {
-            for (OnBleConnectListener observer : listListener) {
+    public void onConnecting(OnBleBaseListener callback, String mac) {
+        synchronized (OnBleBaseListener.class) {
+            for (OnBleBaseListener observer : listListener) {
                 if (observer != null && observer != callback)
-                    if (observer instanceof OnBleScanConnectListener) {
-                        ((OnBleScanConnectListener) observer).onConnecting(mac);
+                    if (observer instanceof OnBleConnectListener) {
+                        ((OnBleConnectListener) observer).onConnecting(mac);
                     }
 
             }
         }
     }
     /**
-     * 正在连接
+     * 连接错误,已达系统连接数量上限
      */
-    public void onConnectMaxErr(OnBleConnectListener callback, List<BluetoothDevice> list) {
-        synchronized (OnBleConnectListener.class) {
-            for (OnBleConnectListener observer : listListener) {
+    public void onConnectMaxErr(OnBleBaseListener callback, List<BluetoothDevice> list) {
+        synchronized (OnBleBaseListener.class) {
+            for (OnBleBaseListener observer : listListener) {
                 if (observer != null && observer != callback)
-                    if (observer instanceof OnBleScanConnectListener) {
-                        ((OnBleScanConnectListener) observer).onConnectMaxErr(list);
+                    if (observer instanceof OnBleConnectListener) {
+                        ((OnBleConnectListener) observer).onConnectMaxErr(list);
                     }
 
             }
@@ -90,11 +96,13 @@ public class BleConnectListenerIm extends BaseListenerIm<OnBleConnectListener> {
     /**
      * 未开启蓝牙
      */
-    public void bleClose(OnBleConnectListener callback) {
-        synchronized (OnBleConnectListener.class) {
-            for (OnBleConnectListener observer : listListener) {
+    public void bleClose(OnBleBaseListener callback) {
+        synchronized (OnBleBaseListener.class) {
+            for (OnBleBaseListener observer : listListener) {
                 if (observer != null && observer != callback)
-                    observer.bleClose();
+                    if (observer instanceof OnBleStatusListener) {
+                        ((OnBleStatusListener) observer).bleClose();
+                    }
             }
         }
     }
@@ -102,11 +110,13 @@ public class BleConnectListenerIm extends BaseListenerIm<OnBleConnectListener> {
     /**
      * 已开启蓝牙
      */
-    public void bleOpen(OnBleConnectListener callback) {
-        synchronized (OnBleConnectListener.class) {
-            for (OnBleConnectListener observer : listListener) {
+    public void bleOpen(OnBleBaseListener callback) {
+        synchronized (OnBleBaseListener.class) {
+            for (OnBleBaseListener observer : listListener) {
                 if (observer != null && observer != callback)
-                    observer.bleOpen();
+                    if (observer instanceof OnBleStatusListener) {
+                        ((OnBleStatusListener) observer).bleOpen();
+                    }
             }
         }
     }

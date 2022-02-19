@@ -13,10 +13,10 @@ import com.xing.xblelibrary.config.XBleStaticConfig;
 import com.xing.xblelibrary.listener.OnBleMtuListener;
 import com.xing.xblelibrary.listener.OnBleRssiListener;
 import com.xing.xblelibrary.listener.OnBleSendResultListener;
-import com.xing.xblelibrary.listener.OnCharacteristicListener;
-import com.xing.xblelibrary.listener.OnNotifyDataListener;
-import com.xing.xblelibrary.listener.onDisConnectedListener;
-import com.xing.xblelibrary.utils.BleLog;
+import com.xing.xblelibrary.listener.OnBleCharacteristicListener;
+import com.xing.xblelibrary.listener.OnBleNotifyDataListener;
+import com.xing.xblelibrary.listener.onBleDisConnectedListener;
+import com.xing.xblelibrary.utils.XBleL;
 import com.xing.xblelibrary.utils.MyBleDeviceUtils;
 
 import java.util.LinkedList;
@@ -45,11 +45,11 @@ public final class BleDevice {
     /**
      * 设备mac地址
      */
-    private String mac = null;
+    private String mac;
     /**
      * 设备名称
      */
-    private String mName = null;
+    private String mName;
 
     /**
      * 信号强度
@@ -58,26 +58,24 @@ public final class BleDevice {
     /**
      * 发送数据的队列
      */
-    private LinkedList<SendDataBean> mLinkedList;
-    private LinkedList<SendDataBean> mLinkedListNotify;
+    private final LinkedList<SendDataBean> mLinkedList = new LinkedList<>();
+    private final LinkedList<SendDataBean> mLinkedListNotify = new LinkedList<>();
 
     private OnBleSendResultListener mOnBleSendResultListener;
-    private onDisConnectedListener mOnDisConnectedListener;
-    private OnNotifyDataListener mOnNotifyDataListener;
+    private onBleDisConnectedListener mOnDisConnectedListener;
+    private OnBleNotifyDataListener mOnNotifyDataListener;
 
     private OnBleRssiListener mOnBleRssiListener;
     private OnBleMtuListener mOnBleMtuListener;
-    private OnCharacteristicListener mOnCharacteristicListener;
+    private OnBleCharacteristicListener mOnCharacteristicListener;
 
 
     public BleDevice(BluetoothGatt bluetoothGatt, String mac) {
-        BleLog.i("连接成功:" + mac);
+        XBleL.i("连接成功:" + mac);
         mBluetoothGatt = bluetoothGatt;
         this.mac = mac;
         this.mName = bluetoothGatt.getDevice().getName();
         connectSuccess = true;
-        mLinkedList = new LinkedList<>();
-        mLinkedListNotify = new LinkedList<>();
         init();
     }
 
@@ -210,7 +208,7 @@ public final class BleDevice {
                 }
             }
         }
-        BleLog.e(TAG, "断开连接:" + mac);
+        XBleL.e(TAG, "断开连接:" + mac);
     }
 
     /**
@@ -226,11 +224,9 @@ public final class BleDevice {
      */
     @CallSuper
     public void onDisConnected() {
-        BleLog.i("断开连接,清空发送队列");
-        if (mHandler != null) {
-            //清空发送队列
-            mHandler.removeCallbacksAndMessages(null);
-        }
+        XBleL.i("断开连接,清空发送队列");
+        //清空发送队列
+        mHandler.removeCallbacksAndMessages(null);
         if (mOnDisConnectedListener != null) {
             mOnDisConnectedListener.onDisConnected();
         }
@@ -262,11 +258,11 @@ public final class BleDevice {
     }
 
     /**
-     * 返回的Mtu
+     * 返回的Mtu,系统返回setMtu后会触发,需要硬件支持设置才会生效
      *
-     * @param mtu
+     * @param mtu  吞吐量(23~517)
      */
-    public void getMtu(int mtu) {
+    public void OnMtu(int mtu) {
         if (mOnBleMtuListener != null) {
             mOnBleMtuListener.OnMtu(mtu);
         }
@@ -277,11 +273,11 @@ public final class BleDevice {
      * 更新的连接参数返回
      *
      * @param interval 间隔
-     * @param latency 延迟
-     * @param timeout 超时
+     * @param latency  延迟
+     * @param timeout  超时
      */
     public void getConnectionUpdated(int interval, int latency, int timeout) {
-        BleLog.i("interval="+interval+"  latency="+latency+"   timeout="+timeout);
+        XBleL.i("interval=" + interval + "  latency=" + latency + "   timeout=" + timeout);
 
     }
 
@@ -465,7 +461,7 @@ public final class BleDevice {
                                             mOnBleSendResultListener.onNotifyResult(uuid, sendOk);
                                         }
                                         if (!sendOk) {
-                                            BleLog.e(TAG, "NOTICE_DATA:UUID=" + uuid + " || false");
+                                            XBleL.e(TAG, "NOTICE_DATA:UUID=" + uuid + " || false");
                                             descriptorWriteOk(null);
                                             return;
                                         }
@@ -478,7 +474,7 @@ public final class BleDevice {
 
                                 break;
                         }
-                        BleLog.i(TAG, "type:" + type + " UUID=" + uuid + " || " + sendOk);
+                        XBleL.i(TAG, "type:" + type + " UUID=" + uuid + " || " + sendOk);
                     } else if (type == XBleStaticConfig.NOTICE_DATA) {
                         //不支持的uuid,回调设置下一个
                         descriptorWriteOk(null);
@@ -494,13 +490,13 @@ public final class BleDevice {
                 descriptorWriteOk(null);
             }
         } catch (Exception e) {
-            BleLog.e(TAG, "读/写/设置通知,异常:" + e.toString());
+            XBleL.e(TAG, "读/写/设置通知,异常:" + e.toString());
             e.printStackTrace();
         }
     }
 
 
-    public void setOnCharacteristicListener(OnCharacteristicListener onCharacteristicListener) {
+    public void setOnCharacteristicListener(OnBleCharacteristicListener onCharacteristicListener) {
         mOnCharacteristicListener = onCharacteristicListener;
     }
 
@@ -547,11 +543,11 @@ public final class BleDevice {
     //---------------
 
 
-    public void setOnDisConnectedListener(onDisConnectedListener onDisConnectedListener) {
+    public void setOnDisConnectedListener(onBleDisConnectedListener onDisConnectedListener) {
         mOnDisConnectedListener = onDisConnectedListener;
     }
 
-    public void setOnNotifyDataListener(OnNotifyDataListener onNotifyDataListener) {
+    public void setOnNotifyDataListener(OnBleNotifyDataListener onNotifyDataListener) {
         mOnNotifyDataListener = onNotifyDataListener;
     }
 
