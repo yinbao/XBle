@@ -127,57 +127,94 @@ XBleManager.getXBleConfig()
 
 ## 手机作为中央设备(大部分情况下都是中央)
 
--  设置接口XBleManager.getInstance().setOnBleScanConnectListener();实现OnBleScanConnectListener接口可以获取搜索,连接,断开等状态以及数据
+-  设置接口XBleManager.getInstance().setOnBleConnectListener();实现OnBleConnectListener接口可以连接,断开等状态以及数据
 
 ```
+
 /**
- * 蓝牙搜索,连接等操作接口
+ * 蓝牙连接断开接口
  */
-public interface OnBleScanConnectListener extends OnBleConnectListener {
+public interface OnBleConnectListener extends OnBleStatusListener{
+
+    /**
+     * 正在连接
+     */
+    default void onConnecting(String mac){}
+
+    /**
+     * 连接错误,当前连接已达系统限制最大值7个
+     * @param list 当前已连接的设备对象列表
+     */
+    default void onConnectMaxErr(List<BluetoothDevice> list){}
+
+    /**
+     * 连接断开,在UI线程
+     */
+    default void onDisConnected(String mac, int code) {
+    }
+
+    /**
+     * 连接成功,还没有获取到服务
+     */
+    default void onConnectionSuccess(String mac) {
+    }
+
+    /**
+     * 连接成功(发现服务),在UI线程
+     */
+    default void onServicesDiscovered(String mac) {
+    }
+
+}
+
+
+```
+
+-  设置接口XBleManager.getInstance().setOnBleScanFilterListener();实现OnBleScanFilterListener接口可以获取扫描设备等信息和蓝牙状态
+
+```
+public interface OnBleScanFilterListener {
+
     /**
      * 开始扫描设备
      */
     default void onStartScan(){}
-    /**
-     * 每扫描到一个设备就会回调一次
-     */
-    default void onScanning(BleValueBean data){}
-    /**
-     * 扫描超时(完成)
-     */
-   default void onScanTimeOut(){}
 
-     /**
+    /**
+     * 过滤计算->可以对广播数据进行帅选过滤
+     *
+     * @param bleBroadcastBean 蓝牙广播数据
+     * @return 是否有效
+     */
+    default boolean onBleFilter(BleBroadcastBean bleBroadcastBean) {
+        return true;
+    }
+
+    /**
+     * 蓝牙广播数据-> 符合要求的广播数据对象返回
+     *
+     * @param bleBroadcastBean 搜索到的设备信息
+     */
+    default void onScanBleInfo(BleBroadcastBean bleBroadcastBean) {
+    }
+
+    /**
+     * 扫描完成
+     * 注:只有在扫描的时候传入了超时时间才会回调
+     */
+    default void onScanComplete(){}
+
+    /**
      * 扫描异常
      * @param time 多少ms后才可以再次进行扫描
      */
     default void onScanErr(long time){}
 
-    /**
-     * 正在连接
-     */
-   default void onConnecting(String mac){}
-  /**
-     * 连接断开,在UI线程
-     */
-   default void onDisConnected(String mac, int code){}
-
-    /**
-     * 连接成功(发现服务),在UI线程
-     */
-  default void onServicesDiscovered(String mac){}
-
-    /**
-     * 已开启蓝牙,在触发线程
-     */
-   default void bleOpen(){}
-
-    /**
-     * 未开启蓝牙,在触发线程
-     */
-   default void bleClose(){}
 }
+
 ```
+
+
 
 -  设置/取消/清空 观察者形式监听BLE连接断连状态:
 
@@ -211,13 +248,13 @@ public interface OnBleScanConnectListener extends OnBleConnectListener {
 
 
 	搜索到的设备
-	会在OnCallbackBle接口中的onScanning(BleValueBean data)返回
+	会在OnCallbackBle接口中的onScanning(BleBroadcastBean data)返回
 	或者
-	在OnScanFilterListener接口中的onScanBleInfo(BleValueBean bleValueBean)返回
+	在OnScanFilterListener接口中的onScanBleInfo(BleBroadcastBean bleValueBean)返回
 
 ```
 
--  连接XBleManager.getInstance().connectDevice(BleValueBean bleValueBean);或者connectDevice(String mAddress);
+-  连接XBleManager.getInstance().connectDevice(BleBroadcastBean bleValueBean);或者connectDevice(String mAddress);
 
 ```
 注:连接之前建议停止搜索XBleManager.getInstance().stopScan(),这样连接过程会更稳定
@@ -298,33 +335,6 @@ XBleManager.getInstance().stopForeground();
 
 
 ##  较常用的接口介绍
-
-
-- XBleManager.getInstance().setOnScanFilterListener(OnScanFilterListener onScanFilterListener)//扫描过滤前置接口,只需要扫描的情况下只实现此接口即可,也可以在此提前过滤不需要的数据
-
-```
-public interface OnScanFilterListener {
-
-    /**
-     * 过滤计算->可以对广播数据进行帅选过滤
-     *
-     * @param bleValueBean 蓝牙广播数据
-     * @return 是否有效
-     */
-    default boolean onBleFilter(BleValueBean bleValueBean) {
-        return true;
-    }
-
-    /**
-     * 蓝牙广播数据-> 符合要求的广播数据对象返回
-     *
-     * @param bleValueBean 搜索到的设备信息
-     */
-    default void onScanBleInfo(BleValueBean bleValueBean) {
-    }
-
-}
-```
 
 
 -  BleDevice 中的setOnCharacteristicListener(OnCharacteristicListener onCharacteristicListener) //蓝牙低层返回的原始数据对象
