@@ -49,6 +49,7 @@ import com.xing.xblelibrary.listener.OnBleAdvertiserConnectListener;
 import com.xing.xblelibrary.listener.OnBleConnectListener;
 import com.xing.xblelibrary.listener.OnBleScanFilterListener;
 import com.xing.xblelibrary.listener.OnBleStatusListener;
+import com.xing.xblelibrary.utils.BleCheckUtils;
 import com.xing.xblelibrary.utils.MyBleDeviceUtils;
 import com.xing.xblelibrary.utils.XBleL;
 
@@ -350,13 +351,28 @@ public class XBleServer extends Service {
      */
     private void initStart() {
         XBleL.i(TAG, "初始化启动信息");
-        if (mBinder == null)
-            mBinder = new BluetoothBinder();
-        if (mBleManager == null)
-            mBleManager = (BluetoothManager) this.getSystemService(Context.BLUETOOTH_SERVICE);
-        if (mBluetoothAdapter == null && mBleManager != null) {
-            mBluetoothAdapter = mBleManager.getAdapter();
-        } else {
+
+        try {
+            // 检查当前手机是否支持ble
+            if (!BleCheckUtils.getInstance().getSupportBluetoothLe(this)) {
+                XBleL.e("该设备不支持低功率蓝牙(This device does not support Bluetooth Low Power)");
+                mHandler.sendEmptyMessage(STOP_SERVER);
+                return;
+            }
+
+            if (mBinder == null)
+                mBinder = new BluetoothBinder();
+            if (mBleManager == null)
+                mBleManager = (BluetoothManager) this.getSystemService(Context.BLUETOOTH_SERVICE);
+            if (mBluetoothAdapter == null && mBleManager != null) {
+                mBluetoothAdapter = mBleManager.getAdapter();
+            } else {
+                mHandler.sendEmptyMessage(STOP_SERVER);
+                return;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            XBleL.e("该设备不支持低功率蓝牙(This device does not support Bluetooth Low Power)");
             mHandler.sendEmptyMessage(STOP_SERVER);
             return;
         }
