@@ -77,7 +77,9 @@
 
 ```
 
-## 权限设置
+## XBle使用到的权限
+
+> gradle依赖的时候会自动加上 
 
 ```
 <!--In most cases, you need to ensure that the device supports BLE.-->
@@ -92,8 +94,10 @@
 <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
 <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
 
-<!--Optional. If your app need dfu function.-->
-<uses-permission android:name="android.permission.INTERNET"/>
+<uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+<uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
+<uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
+
 ```
 
 >  6.0及以上系统必须要定位权限，且需要手动获取权限
