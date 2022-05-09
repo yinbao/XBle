@@ -341,6 +341,7 @@ public class PhoneCentralActivity extends AppCompatActivity implements View.OnCl
         if (mBleDevice != null) {
             mBleDevice.setSendDataInterval(100);//修改发送队列间隔,默认是200ms
             mBleDevice.setNotifyAll();//开启所有的notify
+            mBleDevice.setIndicationAll();//开启所有的Indication
 //            bleDevice.setNotify(serverUUID,notifyUUID1,notifyUUID2);//设置通知
 //            bleDevice.sendDataNow(new SendDataBean());实时发送内容
 //            bleDevice.sendData(new SendDataBean());使用队列发送内容

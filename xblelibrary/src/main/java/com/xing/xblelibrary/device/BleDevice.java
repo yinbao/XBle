@@ -166,10 +166,39 @@ public final class BleDevice {
 
 
     /**
+     * 开启所有的Indication
+     */
+    public void setIndicationAll() {
+        List<BluetoothGattService> services = mBluetoothGatt.getServices();
+        for (BluetoothGattService service : services) {
+            List<BluetoothGattCharacteristic> characteristics = service.getCharacteristics();
+            for (BluetoothGattCharacteristic characteristic : characteristics) {
+                int properties = characteristic.getProperties();
+                if ((properties & BluetoothGattCharacteristic.PROPERTY_INDICATE) != 0x00) {
+                    UUID uuid = characteristic.getUuid();
+                    sendOpenIndication(service.getUuid(), uuid);
+                }
+            }
+        }
+    }
+
+    /**
      * 设置通知,有发送队列,不会马上生效,会等待系统回调设置成功后再会设置下一个,一般间隔在100ms左右,与固件性能有关
      */
     private void sendOpenNotify(UUID uuidService, UUID uuidNotify) {
         mLinkedListNotify.addFirst(new SendDataBean(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE, uuidNotify, XBleStaticConfig.NOTICE_DATA, uuidService));
+        if (mLinkedListNotify.size() <= 1) {
+            mHandler.removeMessages(SEND_DATA_KEY);
+            SendDataBean sendDataBean = mLinkedListNotify.getLast();
+            sendCmd(sendDataBean.getHex(), sendDataBean.getUuid(), sendDataBean.getType(), sendDataBean.getUuidService());
+        }
+    }
+
+    /**
+     * 设置通知,有发送队列,不会马上生效,会等待系统回调设置成功后再会设置下一个,一般间隔在100ms左右,与固件性能有关
+     */
+    private void sendOpenIndication(UUID uuidService, UUID uuidNotify) {
+        mLinkedListNotify.addFirst(new SendDataBean(BluetoothGattDescriptor.ENABLE_INDICATION_VALUE, uuidNotify, XBleStaticConfig.NOTICE_DATA, uuidService));
         if (mLinkedListNotify.size() <= 1) {
             mHandler.removeMessages(SEND_DATA_KEY);
             SendDataBean sendDataBean = mLinkedListNotify.getLast();
@@ -450,8 +479,8 @@ public final class BleDevice {
                                 break;
 
                             case XBleStaticConfig.NOTICE_DATA:
-                                if ((properties & BluetoothGattCharacteristic.PROPERTY_NOTIFY) != 0x00) {
-                                    //支持notify
+                            case XBleStaticConfig.INDICATION_DATA:
+                                if ((properties & BluetoothGattCharacteristic.PROPERTY_NOTIFY) != 0x00||(properties & BluetoothGattCharacteristic.PROPERTY_INDICATE) != 0x00) {
                                     gatt.setCharacteristicNotification(mCharacteristic, true);
                                     BluetoothGattDescriptor bluetoothGattDescriptor = mCharacteristic.getDescriptor(XBleStaticConfig.UUID_NOTIFY_DESCRIPTOR);
                                     if (bluetoothGattDescriptor != null) {

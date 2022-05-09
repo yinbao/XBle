@@ -29,6 +29,10 @@ public class XBleStaticConfig {
      */
     public static final int NOTICE_DATA = 4;
 
+    /**
+     * 指示(Indication)
+     */
+    public static final int INDICATION_DATA = 5;
     //-----------------
 
     /**
