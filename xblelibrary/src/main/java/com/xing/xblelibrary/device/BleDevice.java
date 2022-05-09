@@ -146,6 +146,18 @@ public final class BleDevice {
         }
     }
 
+    /**
+     * 开启多个Indication,如果多个服务,可重复调用
+     *
+     * @param uuidService uuidService
+     * @param uuidIndication uuidIndication
+     */
+    public void setIndication(UUID uuidService, UUID... uuidIndication) {
+        for (UUID uuid : uuidIndication) {
+            sendOpenIndication(uuidService, uuid);
+        }
+    }
+
 
     /**
      * 开启所有的Notify
