@@ -468,7 +468,7 @@ public class XBleServer extends Service {
             if (scanUUID != null && scanUUID.length > 0) {
                 mScanUUID = scanUUID;
                 for (UUID uuid : scanUUID) {
-                    if (uuid==null) {
+                    if (uuid == null) {
                         mScanUUID = null;
                         break;
                     }
@@ -548,7 +548,7 @@ public class XBleServer extends Service {
                 return;
             for (ParcelUuid uuid : parcelUuids) {
                 for (UUID uuid1 : mScanUUID) {
-                    if (uuid1 == null ||( uuid != null && uuid.toString().equalsIgnoreCase(uuid1.toString()))) {
+                    if (uuid1 == null || (uuid != null && uuid.toString().equalsIgnoreCase(uuid1.toString()))) {
                         uuidOk = true;
                         break;
                     }
@@ -588,7 +588,7 @@ public class XBleServer extends Service {
                     return;
                 for (ParcelUuid uuid : parcelUuids) {
                     for (UUID uuid1 : mScanUUID) {
-                        if (uuid1 == null ||( uuid != null && uuid.toString().equalsIgnoreCase(uuid1.toString()))) {
+                        if (uuid1 == null || (uuid != null && uuid.toString().equalsIgnoreCase(uuid1.toString()))) {
                             uuidOk = true;
                             break;
                         }
@@ -1131,16 +1131,10 @@ public class XBleServer extends Service {
                 BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
 //                if (device.getBluetoothClass().getMajorDeviceClass() == BluetoothClass.Device.Major.AUDIO_VIDEO) {
                 //是A2DP的设备
-                if (device.getType() != BluetoothDevice.DEVICE_TYPE_LE) {
-                    XBleL.i("发现蓝牙设备:" + device.getName() + " 地址:" + device.getAddress() + " 是否已配对" + device.getBondState() + " 是否为经典蓝牙:" + device.getType());
-                    if (device.getAddress().equalsIgnoreCase("58:00:00:00:03:22")) {
-                        if (mBluetoothAdapter.isDiscovering()) {
-                            mBluetoothAdapter.cancelDiscovery();
-                        }
-                        connectA2dp(device);
-                        XBleL.i("开始连接:" + device.getName());
-                    }
-                }
+//                if (device.getType() != BluetoothDevice.DEVICE_TYPE_LE) {
+//                    XBleL.i("发现蓝牙设备:" + device.getName() + " 地址:" + device.getAddress() + " 是否已配对" + device.getBondState() + " 是否为经典蓝牙:" + device.getType());
+//
+//                }
 //                }
             } else if (action.equals(BluetoothAdapter.ACTION_DISCOVERY_STARTED)) {
                 XBleL.i("已开始发现蓝牙设备");
@@ -1596,7 +1590,9 @@ public class XBleServer extends Service {
                 stopAdvertiseData();
             }
             runOnMainThread(() -> {
-                mOnBleAdvertiserConnectListener.onAdConnectionSuccess(address);
+                if (mOnBleAdvertiserConnectListener != null) {
+                    mOnBleAdvertiserConnectListener.onAdConnectionSuccess(address);
+                }
             });
             return adBleDevice;
         }
