@@ -7,6 +7,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
+import android.widget.Toast;
 
 import com.xing.xblelibrary.XBleManager;
 import com.xing.xblelibrary.utils.XBleL;
@@ -26,7 +27,6 @@ public class MainActivity extends AppCompatActivity implements  View.OnClickList
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         initPermissions();//判断权限
-        init();
         XBleL.init(true);//开启日志
         XBleManager.getXBleConfig()
                 .setConnectMax(7)//设置最大连接数据
@@ -35,8 +35,10 @@ public class MainActivity extends AppCompatActivity implements  View.OnClickList
         XBleManager.getInstance().init(getApplicationContext(), new XBleManager.onInitListener() {
             @Override
             public void onInitSuccess() {
+                Toast.makeText(MainActivity.this,"初始化成功.",Toast.LENGTH_SHORT).show();
             }
         });
+        init();
 
     }
 

@@ -254,9 +254,17 @@ public class XBleManager {
         }
     }
 
+    /**
+     * 断开指定mac地址的蓝牙连接,正在连接中的设备也会断开
+     */
+    public void disconnect(String mac) {
+        if (checkBluetoothServiceStatus()) {
+            mXBleServer.disconnect(mac);
+        }
+    }
 
     /**
-     * 断开所有的连接
+     * 断开所有蓝牙连接,包含连接中的设备
      */
     public void disconnectAll() {
         if (checkBluetoothServiceStatus()) {

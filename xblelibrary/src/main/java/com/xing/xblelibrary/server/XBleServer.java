@@ -1043,9 +1043,17 @@ public class XBleServer extends Service {
         }
     }
 
+    /**
+     * 断开指定mac地址的蓝牙连接,正在连接中的设备也会断开
+     * @param mac mac地址
+     */
+    public void disconnect(String mac){
+        disconnect(mac,0,mConnectGatt);
+    }
+
 
     /**
-     * （断开所有蓝牙连接）
+     * 断开所有蓝牙连接,包含连接中的设备
      */
     public void disconnectAll() {
         XBleL.i(TAG, "disconnectAll:断开所有蓝牙连接");

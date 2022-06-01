@@ -106,6 +106,18 @@ public class BleBroadcastBean {
         return mac;
     }
 
+    public void setRssi(int rssi) {
+        mRssi = rssi;
+    }
+
+    public void setName(String name) {
+        mName = name;
+    }
+
+    public void setMac(String mac) {
+        this.mac = mac;
+    }
+
     public boolean isConnectBle() {
         return mConnectBle;
     }

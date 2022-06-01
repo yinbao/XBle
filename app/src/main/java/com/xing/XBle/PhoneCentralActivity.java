@@ -3,6 +3,7 @@ package com.xing.XBle;
 import android.Manifest;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCharacteristic;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
@@ -11,12 +12,16 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 import android.text.TextUtils;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.BaseAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ListView;
+import android.widget.TextView;
 
 import com.xing.xblelibrary.XBleManager;
 import com.xing.xblelibrary.bean.BleBroadcastBean;
@@ -48,10 +53,10 @@ public class PhoneCentralActivity extends AppCompatActivity implements View.OnCl
 
     private final int REFRESH_BLE = 1;
     private final int REFRESH_DATA = 2;
-
-    private List<String> mListBle;
+    private Context mContext;
+    private List<BleBroadcastBean> mListBle;
     private List<String> mListData;
-    private ArrayAdapter mListAdapterBle;
+    private BleDataAdapter mListAdapterBle;
     private ArrayAdapter mListAdapterData;
     private ListView mListViewBle;
     private ListView mListViewData;
@@ -89,7 +94,7 @@ public class PhoneCentralActivity extends AppCompatActivity implements View.OnCl
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_phone_central);
-
+        mContext=this;
         init();
 
 
@@ -106,8 +111,8 @@ public class PhoneCentralActivity extends AppCompatActivity implements View.OnCl
         mListViewBle.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                String data = mListBle.get(position);
-                mConnectMac = data.substring(data.indexOf("MAC=") + 4).trim();
+                BleBroadcastBean bleBroadcastBean = mListBle.get(position);
+                mConnectMac = bleBroadcastBean.getMac();
                 XBleManager.getInstance().stopScan();
                 XBleManager.getInstance().connectDevice(mConnectMac);
             }
@@ -134,8 +139,8 @@ public class PhoneCentralActivity extends AppCompatActivity implements View.OnCl
             mHandler.sendEmptyMessage(REFRESH_DATA);
         } else if (id == R.id.btn_clear) {
             mListBle.clear();
-            mHandler.sendEmptyMessage(REFRESH_BLE);
             mListData.clear();
+            mHandler.sendEmptyMessage(REFRESH_BLE);
             mHandler.sendEmptyMessage(REFRESH_DATA);
         } else if (id == R.id.btn_disconnect) {
             XBleManager.getInstance().disconnectAll();
@@ -156,7 +161,7 @@ public class PhoneCentralActivity extends AppCompatActivity implements View.OnCl
 
     private void initData() {
         mListBle = new ArrayList<>();
-        mListAdapterBle = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, mListBle);
+        mListAdapterBle = new BleDataAdapter(mListBle);
         mListViewBle.setAdapter(mListAdapterBle);
 
         mListData = new ArrayList<>();
@@ -179,6 +184,57 @@ public class PhoneCentralActivity extends AppCompatActivity implements View.OnCl
         et_send_data = findViewById(R.id.et_send_data);
         btn_send_data = findViewById(R.id.btn_send_data);
     }
+
+    private class BleDataAdapter extends BaseAdapter{
+
+        private List<BleBroadcastBean> mData;
+
+        public BleDataAdapter(List<BleBroadcastBean> data) {
+            mData=data;
+        }
+
+        @Override
+        public int getCount() {
+            return mData.size();
+        }
+
+        @Override
+        public Object getItem(int position) {
+            return mData.get(position);
+        }
+
+        @Override
+        public long getItemId(int position) {
+            return position;
+        }
+
+        @Override
+        public View getView(int position, View convertView, ViewGroup parent) {
+            ViewHolder viewHolder;
+            if (convertView==null){
+                convertView= LayoutInflater.from(mContext).inflate(android.R.layout.simple_list_item_1,null);
+                viewHolder=new ViewHolder(convertView);
+                convertView.setTag(viewHolder);
+            }else {
+                viewHolder= (ViewHolder) convertView.getTag();
+            }
+            BleBroadcastBean bleBroadcastBean = mData.get(position);
+            String bleData = "Name=" + bleBroadcastBean.getName() + "\nRssi=" + bleBroadcastBean.getRssi() + "\nMAC=" + bleBroadcastBean.getMac();
+            viewHolder.text1.setText(bleData);
+            return convertView;
+        }
+
+
+        private final class ViewHolder{
+            public TextView text1;
+
+            public ViewHolder(View view) {
+                text1= (TextView) view;
+            }
+        }
+
+    }
+
 
 
     //-----------------------权限----------------------------------------
@@ -247,7 +303,8 @@ public class PhoneCentralActivity extends AppCompatActivity implements View.OnCl
      */
     protected void onPermissionsOk() {
         XBleManager.getInstance().setOnScanFilterListener(this);//设置监听
-        XBleManager.getInstance().startScan(1000);//开始搜索
+        XBleManager.getInstance().startScan(10000);//开始搜索
+        mListData.add(0, TimeUtils.getCurrentTimeStr() + "开始扫描:10S");
     }
 
 
@@ -257,7 +314,7 @@ public class PhoneCentralActivity extends AppCompatActivity implements View.OnCl
         mBleName = et_filter_name.getText().toString().trim();
         mBleMac = et_filter_mac.getText().toString().trim();
         XBleL.i("开始扫描");
-        mListData.add(0, TimeUtils.getCurrentTimeStr() + "开始扫描");
+
         mHandler.sendEmptyMessage(REFRESH_DATA);
     }
 
@@ -265,13 +322,20 @@ public class PhoneCentralActivity extends AppCompatActivity implements View.OnCl
     public void onScanBleInfo(BleBroadcastBean data) {
         //扫描返回的结果,每发现一个设备就会回调一次
         XBleL.i("扫描结果:" + data.getName() + " mac:" + data.getMac());
-        if ((TextUtils.isEmpty(mBleName) || (data.getName() != null && data.getName().toUpperCase().contains(mBleName.toUpperCase())))
-                &&(TextUtils.isEmpty(mBleMac)||(data.getMac().replace(":","").contains(mBleMac)))) {
-            String bleData = "Name=" + data.getName() + "\nMAC=" + data.getMac();
-            if (!mListBle.contains(bleData)) {
-                mListBle.add(bleData);
-                mListAdapterBle.notifyDataSetChanged();
+        if ((TextUtils.isEmpty(mBleName) || (data.getName() != null && data.getName().toUpperCase().contains(mBleName.toUpperCase()))) && (TextUtils.isEmpty(mBleMac) || (data.getMac().replace(":", "")
+                .contains(mBleMac)))) {
+            boolean newData=true;
+            for (int i = 0; i < mListBle.size(); i++) {
+                BleBroadcastBean bleBroadcastBean = mListBle.get(i);
+                if (bleBroadcastBean.equals(data)){
+                    newData=false;
+                    bleBroadcastBean.setRssi(data.getRssi());
+                }
             }
+            if (newData){
+                mListBle.add(data);
+            }
+            mHandler.sendEmptyMessage(REFRESH_BLE);
         }
     }
 
