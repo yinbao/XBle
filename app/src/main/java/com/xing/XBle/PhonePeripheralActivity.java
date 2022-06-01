@@ -146,52 +146,23 @@ public class PhonePeripheralActivity extends AppCompatActivity implements View.O
             }
         } else if (id == R.id.btn_send_data) {//发送数据
             String data = et_send_data.getText().toString().trim();
-            byte[] bytes = new byte[data.length() >> 1];
-            int j = 0;
-            for (int i = 0; i < data.length(); i += 2) {
-                bytes[j] = (byte) Integer.parseInt(data.substring(i, i + 2), 16);
-                j++;
+            int length = data.length();
+            int size = length>>1;
+            byte[] bytes=new byte[size];
+            int j=0;
+            for (int i=0;i<size;i++){
+                bytes[i]= (byte) Integer.parseInt(data.substring(j,j+2),16);
+                j+=2;
             }
-            byte[] bytes1 = sendMcuDataFormat(bytes);
             if (mAdBleDevice != null) {
-                mAdBleDevice.sendData(new SendDataBean(bytes1, UUID.fromString(UUID_NOTIFY), XBleStaticConfig.WRITE_DATA, UUID.fromString(UUID_SERVER)));
+                mAdBleDevice.sendData(new SendDataBean(bytes, UUID.fromString(UUID_NOTIFY), XBleStaticConfig.WRITE_DATA, UUID.fromString(UUID_SERVER)));
             }
         }
 
     }
 
-    /**
-     * 通用的设置指令发送的数据格式(A7)
-     *
-     * @param data 数据内容(最大15byte)(包含指令)
-     * @return 可发送的数据格式
-     */
-    byte[] sendMcuDataFormat(byte[] data) {
-        int length = data.length;
-        byte sum = 0;
-        byte[] cmdByte = new byte[length + 6];//加上长度,包头,包尾,校验和,2个cid
-        cmdByte[0] = (byte) 0xA7;
-        cmdByte[1] = 0x00;
-        cmdByte[2] = 0x31;
-        cmdByte[3] = (byte) length;
-        System.arraycopy(data, 0, cmdByte, 4, data.length);
-        sum = cmdSum(cmdByte);
-        cmdByte[cmdByte.length - 2] = sum;
-        cmdByte[cmdByte.length - 1] = 0x7A;
-        return cmdByte;
-    }
 
-    /**
-     * 校验累加,从1开始加
-     */
-    private static byte cmdSum(byte[] data) {
-        byte sum = 0;
-        for (int i = 1; i < data.length; i++) {
-            sum += data[i];
-        }
 
-        return sum;
-    }
 
     private void initData() {
         mListData = new ArrayList<>();

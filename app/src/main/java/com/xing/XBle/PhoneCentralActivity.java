@@ -146,11 +146,13 @@ public class PhoneCentralActivity extends AppCompatActivity implements View.OnCl
             XBleManager.getInstance().disconnectAll();
         }else if (id == R.id.btn_send_data) {
              String data = et_send_data.getText().toString().trim();
-             byte[] bytes=new byte[data.length()>>1];
+             int length = data.length();
+             int size = length>>1;
+             byte[] bytes=new byte[size];
              int j=0;
-             for (int i=0;i<data.length();i+=2){
-                 bytes[j]= (byte) Integer.parseInt(data.substring(i,i+2),16);
-                 j++;
+             for (int i=0;i<size;i++){
+                 bytes[i]= (byte) Integer.parseInt(data.substring(j,j+2),16);
+                 j+=2;
              }
              if (mBleDevice!=null&&mWriteUuid!=null&&mServiceUuid!=null){
                  mBleDevice.sendData(new SendDataBean(bytes, UUID.fromString(mWriteUuid), XBleStaticConfig.WRITE_DATA,UUID.fromString(mServiceUuid)));

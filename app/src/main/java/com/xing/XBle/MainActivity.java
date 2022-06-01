@@ -21,6 +21,7 @@ import androidx.core.content.ContextCompat;
 public class MainActivity extends AppCompatActivity implements  View.OnClickListener {
 
     private Button btn_central, btn_periphery;
+    private boolean mInitOk=false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -35,7 +36,8 @@ public class MainActivity extends AppCompatActivity implements  View.OnClickList
         XBleManager.getInstance().init(getApplicationContext(), new XBleManager.onInitListener() {
             @Override
             public void onInitSuccess() {
-                Toast.makeText(MainActivity.this,"初始化成功.",Toast.LENGTH_SHORT).show();
+                mInitOk=true;
+
             }
         });
         init();
@@ -59,6 +61,10 @@ public class MainActivity extends AppCompatActivity implements  View.OnClickList
 
     @Override
     public void onClick(View v) {
+        if (!mInitOk){
+            Toast.makeText(MainActivity.this,"等待初始化成功.",Toast.LENGTH_SHORT).show();
+            return;
+        }
         int id = v.getId();
         if (id == R.id.btn_periphery) {
             startActivity(new Intent(this,PhonePeripheralActivity.class));

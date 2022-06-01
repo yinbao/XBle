@@ -87,12 +87,15 @@
             android:layout_weight="1"
             android:layout_height="wrap_content"
             android:text=""
+            android:hint="16进制"
+            android:digits="0123456789abcdefABCDEF"
             />
         <Button
             android:id="@+id/btn_send_data"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="发送内容"
+
             />
 
 
