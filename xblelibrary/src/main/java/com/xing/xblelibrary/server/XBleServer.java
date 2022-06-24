@@ -1045,10 +1045,26 @@ public class XBleServer extends Service {
 
     /**
      * 断开指定mac地址的蓝牙连接,正在连接中的设备也会断开
+     *
      * @param mac mac地址
      */
-    public void disconnect(String mac){
-        disconnect(mac,0,mConnectGatt);
+    public void disconnect(String mac) {
+        mHandler.removeMessages(CONNECT_BLE_TIMEOUT);
+        if (mConnectGatt != null) {
+            mConnectGatt.disconnect();
+            if (mConnectGatt != null)
+                mConnectGatt.close();
+            mConnectGatt = null;
+        }
+        if (mBleDeviceMap != null) {
+            synchronized (mBleDeviceMap) {
+                if (mBleDeviceMap != null) {
+                    BleDevice mConnectBleObject = mBleDeviceMap.get(mac);
+                    if (mConnectBleObject != null)
+                        mConnectBleObject.disconnect();
+                }
+            }
+        }
     }
 
 
@@ -1472,7 +1488,7 @@ public class XBleServer extends Service {
             @Override
             public void onConnectionStateChange(BluetoothDevice device, int status, int newState) {
                 super.onConnectionStateChange(device, status, newState);
-                XBleL.i("手机作为外围:onConnectionStateChange:" + device.getAddress() + " status:" + status + " newState" + newState);
+//                XBleL.i("手机作为外围:onConnectionStateChange:" + device.getAddress() + " status:" + status + " newState" + newState);
                 //连接成功
                 if (newState == BluetoothProfile.STATE_CONNECTED) {
                     //系统监听到连接成功
