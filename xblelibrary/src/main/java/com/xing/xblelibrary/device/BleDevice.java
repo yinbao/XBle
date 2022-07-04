@@ -69,6 +69,15 @@ public final class BleDevice {
     private OnBleMtuListener mOnBleMtuListener;
     private OnBleCharacteristicListener mOnCharacteristicListener;
 
+    /**
+     * 是否需要重发
+     */
+    private boolean mResend = false;
+    /**
+     * 重发次数
+     */
+    private int mResendNumber = 3;
+
 
     public BleDevice(BluetoothGatt bluetoothGatt, String mac) {
         XBleL.i("连接成功:" + mac);
@@ -420,10 +429,10 @@ public final class BleDevice {
      *
      * @param sendDataBean SendDataBean
      */
-    public synchronized void sendDataNow(SendDataBean sendDataBean) {
+    public synchronized boolean sendDataNow(SendDataBean sendDataBean) {
         if (sendDataBean == null)
-            return;
-        sendCmd(sendDataBean.getHex(), sendDataBean.getUuid(), sendDataBean.getType(), sendDataBean.getUuidService());
+            return false;
+        return sendCmd(sendDataBean.getHex(), sendDataBean.getUuid(), sendDataBean.getType(), sendDataBean.getUuidService());
     }
 
 
@@ -434,7 +443,18 @@ public final class BleDevice {
                 if (mLinkedList.size() > 0) {
                     SendDataBean sendDataBean = mLinkedList.pollLast();
                     if (sendDataBean != null) {
-                        sendCmd(sendDataBean.getHex(), sendDataBean.getUuid(), sendDataBean.getType(), sendDataBean.getUuidService());
+                        boolean result=sendCmd(sendDataBean.getHex(), sendDataBean.getUuid(), sendDataBean.getType(), sendDataBean.getUuidService());
+
+                        if (mResend) {
+                            if (!result) {
+                                //发送失败
+                                if (sendDataBean.getResendNumber() < mResendNumber) {
+                                    sendDataBean.addResendNumber();
+                                    sendDataBean.setTop(true);
+                                    mLinkedList.addFirst(sendDataBean);
+                                }
+                            }
+                        }
                         mHandler.sendEmptyMessageDelayed(SEND_DATA_KEY, mSendDataInterval);//设置间隔,避免发送失败
                     } else {
                         mHandler.sendEmptyMessage(SEND_DATA_KEY);//没有需要发送的数据,不需要间隔
@@ -452,7 +472,8 @@ public final class BleDevice {
      * @param type        操作类型(1=读,2=写,3=信号强度)
      * @param uuidService 服务的uuid
      */
-    private synchronized void sendCmd(byte[] hex, UUID uuid, int type, UUID uuidService) {
+    private synchronized boolean sendCmd(byte[] hex, UUID uuid, int type, UUID uuidService) {
+        boolean sendOk = true;
         try {
             BluetoothGatt gatt = mBluetoothGatt;
             if (gatt != null) {
@@ -470,7 +491,6 @@ public final class BleDevice {
                         } else {
                             mCharacteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
                         }
-                        boolean sendOk = false;
                         switch (type) {
                             case XBleStaticConfig.READ_DATA:
                                 sendOk = gatt.readCharacteristic(mCharacteristic);
@@ -504,7 +524,7 @@ public final class BleDevice {
                                         if (!sendOk) {
                                             XBleL.e(TAG, "NOTICE_DATA:UUID=" + uuid + " || false");
                                             descriptorWriteOk(null);
-                                            return;
+                                            return false;
                                         }
                                     } else {
                                         descriptorWriteOk(null);
@@ -515,7 +535,6 @@ public final class BleDevice {
 
                                 break;
                         }
-                        XBleL.i(TAG, "type:" + type + " UUID=" + uuid + " || " + sendOk);
                     } else if (type == XBleStaticConfig.NOTICE_DATA) {
                         //不支持的uuid,回调设置下一个
                         descriptorWriteOk(null);
@@ -534,6 +553,7 @@ public final class BleDevice {
             XBleL.e(TAG, "读/写/设置通知,异常:" + e.toString());
             e.printStackTrace();
         }
+        return sendOk;
     }
 
 
@@ -580,6 +600,18 @@ public final class BleDevice {
     public void setSendDataInterval(int interval) {
         mSendDataInterval = interval;
     }
+
+    /**
+     * 是否需要重发机制
+     *
+     * @param resend 默认false
+     * @param resendNumber resend为false的时候无效重发次数,默认3
+     */
+    public void setResend(boolean resend,int resendNumber) {
+        mResend = resend;
+        mResendNumber = resendNumber;
+    }
+
 
     //---------------
 

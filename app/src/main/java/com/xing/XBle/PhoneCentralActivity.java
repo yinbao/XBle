@@ -334,10 +334,14 @@ public class PhoneCentralActivity extends AppCompatActivity implements View.OnCl
                     bleBroadcastBean.setRssi(data.getRssi());
                 }
             }
-            if (newData){
-                mListBle.add(data);
+            synchronized (mListBle){
+                if (newData){
+                    mListBle.add(data);
+                }
+                if (mListAdapterBle != null) {
+                    mListAdapterBle.notifyDataSetChanged();
+                }
             }
-            mHandler.sendEmptyMessage(REFRESH_BLE);
         }
     }
 
