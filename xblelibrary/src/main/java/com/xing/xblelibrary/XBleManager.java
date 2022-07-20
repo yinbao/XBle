@@ -1,12 +1,17 @@
 package com.xing.xblelibrary;
 
 import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.Build;
 import android.os.IBinder;
+
+import androidx.annotation.DrawableRes;
+import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
 
 import com.xing.xblelibrary.bean.AdBleBroadcastBean;
 import com.xing.xblelibrary.bean.BleBroadcastBean;
@@ -24,10 +29,6 @@ import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-
-import androidx.annotation.DrawableRes;
-import androidx.annotation.Nullable;
-import androidx.annotation.RequiresApi;
 
 /**
  * xing<br>
@@ -190,7 +191,8 @@ public class XBleManager {
             if (autoConnectSystemBle) {
                 mXBleServer.autoConnectSystemBle();
             }
-            mXBleServer.setAutoMonitorSystemConnectBle(XBleConfig.getInstance().isAutoMonitorSystemConnectBle());
+            mXBleServer.setAutoMonitorSystemConnectBle(XBleConfig.getInstance()
+                    .isAutoMonitorSystemConnectBle());
         }
     }
 
@@ -246,6 +248,19 @@ public class XBleManager {
     /**
      * 连接设备
      *
+     * @param bleValueBean BleValueBean
+     * @param transport    {@link BluetoothDevice#TRANSPORT_AUTO} or {@link BluetoothDevice#TRANSPORT_BREDR} or {@link  BluetoothDevice#TRANSPORT_LE}
+     */
+    @RequiresApi(api = Build.VERSION_CODES.M)
+    public void connectDevice(BleBroadcastBean bleValueBean, int transport) {
+        if (checkBluetoothServiceStatus()) {
+            mXBleServer.connectDevice(bleValueBean, transport);
+        }
+    }
+
+    /**
+     * 连接设备
+     *
      * @param mAddress 设备mac地址
      */
     public void connectDevice(String mAddress) {
@@ -253,6 +268,18 @@ public class XBleManager {
             mXBleServer.connectDevice(mAddress);
         }
     }
+
+    /**
+     * @param mAddress  mac地址
+     * @param transport {@link BluetoothDevice#TRANSPORT_AUTO} or {@link BluetoothDevice#TRANSPORT_BREDR} or {@link  BluetoothDevice#TRANSPORT_LE}
+     */
+    @RequiresApi(api = Build.VERSION_CODES.M)
+    public void connectDevice(String mAddress, int transport) {
+        if (checkBluetoothServiceStatus()) {
+            mXBleServer.connectDevice(mAddress, transport);
+        }
+    }
+
 
     /**
      * 断开指定mac地址的蓝牙连接,正在连接中的设备也会断开

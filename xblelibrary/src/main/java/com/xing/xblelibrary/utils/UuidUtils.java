@@ -1,13 +1,13 @@
 package com.xing.xblelibrary.utils;
 
-import java.util.UUID;
-
 import androidx.annotation.Nullable;
+
+import java.util.UUID;
 
 /**
  * xing<br>
  * 2022/7/4<br>
- * java类作用描述
+ * UUID工具类
  */
 public class UuidUtils {
 

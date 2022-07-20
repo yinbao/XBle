@@ -1,6 +1,7 @@
 package com.xing.XBle;
 
 import android.Manifest;
+import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.content.Context;
@@ -23,6 +24,12 @@ import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.TextView;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+
 import com.xing.xblelibrary.XBleManager;
 import com.xing.xblelibrary.bean.BleBroadcastBean;
 import com.xing.xblelibrary.config.XBleStaticConfig;
@@ -36,12 +43,6 @@ import com.xing.xblelibrary.utils.XBleL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
 
 /**
  * xing<br>
@@ -114,7 +115,12 @@ public class PhoneCentralActivity extends AppCompatActivity implements View.OnCl
                 BleBroadcastBean bleBroadcastBean = mListBle.get(position);
                 mConnectMac = bleBroadcastBean.getMac();
                 XBleManager.getInstance().stopScan();
-                XBleManager.getInstance().connectDevice(mConnectMac);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    //可以优化连接BLE 4.0出现133的问题
+                    XBleManager.getInstance().connectDevice(mConnectMac, BluetoothDevice.TRANSPORT_LE);
+                }else {
+                    XBleManager.getInstance().connectDevice(mConnectMac);
+                }
             }
         });
 

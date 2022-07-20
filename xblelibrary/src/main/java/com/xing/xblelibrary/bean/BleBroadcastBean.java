@@ -6,15 +6,15 @@ import android.bluetooth.le.ScanResult;
 import android.os.Build;
 import android.os.ParcelUuid;
 
+import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
+
 import com.xing.xblelibrary.utils.BleBroadcastUtils;
 import com.xing.xblelibrary.utils.XBleL;
 
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
-
-import androidx.annotation.Nullable;
-import androidx.annotation.RequiresApi;
 
 /**
  * 蓝牙广播内容bean<br>
@@ -159,11 +159,7 @@ public class BleBroadcastBean {
     private boolean equals(BleBroadcastBean mBleValueBean) {
         BluetoothDevice mNewDevice = mBleValueBean.getDevice();
         if (mDevice != null) {
-            if (mDevice == mBleValueBean.getDevice() || equals(mNewDevice.getAddress())) {
-                return true;
-            } else {
-                return false;
-            }
+            return mDevice == mBleValueBean.getDevice() || equals(mNewDevice.getAddress());
         }
         return false;
     }
@@ -177,11 +173,7 @@ public class BleBroadcastBean {
      */
     private boolean equals(String mBleAddress) {
         if (mDevice != null) {
-            if (mDevice.getAddress().equals(mBleAddress)) {
-                return true;
-            } else {
-                return false;
-            }
+            return mDevice.getAddress().equals(mBleAddress);
         }
         return false;
     }

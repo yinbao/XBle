@@ -9,22 +9,22 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 
+import androidx.annotation.CallSuper;
+import androidx.annotation.RequiresApi;
+
 import com.xing.xblelibrary.config.XBleStaticConfig;
+import com.xing.xblelibrary.listener.OnBleCharacteristicListener;
 import com.xing.xblelibrary.listener.OnBleMtuListener;
+import com.xing.xblelibrary.listener.OnBleNotifyDataListener;
 import com.xing.xblelibrary.listener.OnBleRssiListener;
 import com.xing.xblelibrary.listener.OnBleSendResultListener;
-import com.xing.xblelibrary.listener.OnBleCharacteristicListener;
-import com.xing.xblelibrary.listener.OnBleNotifyDataListener;
 import com.xing.xblelibrary.listener.onBleDisConnectedListener;
-import com.xing.xblelibrary.utils.XBleL;
 import com.xing.xblelibrary.utils.MyBleDeviceUtils;
+import com.xing.xblelibrary.utils.XBleL;
 
 import java.util.LinkedList;
 import java.util.List;
 import java.util.UUID;
-
-import androidx.annotation.CallSuper;
-import androidx.annotation.RequiresApi;
 
 /**
  * xing<br>
@@ -127,7 +127,7 @@ public final class BleDevice {
         return bleGattService.getCharacteristics();
     }
 
-    private void init() {
+    public void init() {
         //TODO 可进行所有模块都要进行的初始化操作
 
     }
@@ -388,7 +388,7 @@ public final class BleDevice {
                 mOnCharacteristicListener.onDescriptorWriteOK(descriptor);
             }
         }
-        if (mLinkedListNotify != null && mLinkedListNotify.size() > 0) {
+        if (mLinkedListNotify.size() > 0) {
             mLinkedListNotify.removeLast();
             if (mLinkedListNotify.size() > 0) {
                 SendDataBean sendDataBean = mLinkedListNotify.getLast();
