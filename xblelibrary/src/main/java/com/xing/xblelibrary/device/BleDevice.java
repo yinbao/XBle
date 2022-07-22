@@ -647,9 +647,10 @@ public final class BleDevice {
     }
 
 
-    //---------------
+    //---------------onBleDisConnectedListener-------------
 
     /**
+     * 设置监听断连状态
      * 将会在3.x的版本中移除
      * see {@link BleDevice#addOnDisConnectedListener} or {@link BleDevice#removeOnDisConnectedListener}
      */
@@ -660,12 +661,20 @@ public final class BleDevice {
 
     private List<onBleDisConnectedListener> mOnBleDisConnectedListeners=new ArrayList<>();
 
+    /**
+     * 设置监听断连状态
+     * @param listener 断连接口
+     */
     public void addOnDisConnectedListener(onBleDisConnectedListener listener) {
         if (!mOnBleDisConnectedListeners.contains(listener)) {
             mOnBleDisConnectedListeners.add(listener);
         }
     }
 
+    /**
+     * 移除监听断连状态
+     * @param listener 断连接口
+     */
     public void removeOnDisConnectedListener(onBleDisConnectedListener listener) {
         if (mOnBleDisConnectedListeners!=null) {
             mOnBleDisConnectedListeners.remove(listener);
@@ -675,6 +684,7 @@ public final class BleDevice {
     //------------------OnBleCharacteristicListener--------------------------
 
     /**
+     * 设置监听BLE返回的数据,包含read,Write,notify等
      * 将会在3.x的版本中移除
      * see {@link BleDevice#addOnCharacteristicListener} or {@link BleDevice#removeOnCharacteristicListener}
      */
@@ -685,6 +695,10 @@ public final class BleDevice {
 
     private List<OnBleCharacteristicListener> mOnBleCharacteristicListeners = new ArrayList<>();
 
+    /**
+     * 设置监听BLE返回的数据,包含read,Write,notify等
+     * @param onCharacteristicListener BLE透传数据接口
+     */
     public void addOnCharacteristicListener(OnBleCharacteristicListener onCharacteristicListener) {
         if (!mOnBleCharacteristicListeners.contains(onCharacteristicListener)) {
             mOnBleCharacteristicListeners.add(onCharacteristicListener);
@@ -692,6 +706,10 @@ public final class BleDevice {
     }
 
 
+    /**
+     * 移除监听BLE返回的数据,包含read,Write,notify(Indication)等
+     * @param onCharacteristicListener BLE透传数据接口
+     */
     public void removeOnCharacteristicListener(OnBleCharacteristicListener onCharacteristicListener) {
         if (mOnBleCharacteristicListeners != null) {
             mOnBleCharacteristicListeners.remove(onCharacteristicListener);
@@ -702,6 +720,7 @@ public final class BleDevice {
     //------------------OnBleNotifyDataListener--------------------------
 
     /**
+     * 设置监听notify和Indication数据
      * 将会在3.x的版本中移除
      * see {@link BleDevice#addOnNotifyDataListener} or {@link BleDevice#removeOnNotifyDataListener}
      */
@@ -713,12 +732,20 @@ public final class BleDevice {
 
     private List<OnBleNotifyDataListener> mOnBleNotifyDataListeners = new ArrayList<>();
 
+    /**
+     * 设置监听notify和Indication数据
+     * @param onNotifyDataListener BLE Notify(Indication)透传数据接口
+     */
     public void addOnNotifyDataListener(OnBleNotifyDataListener onNotifyDataListener) {
         if (!mOnBleNotifyDataListeners.contains(onNotifyDataListener)) {
             mOnBleNotifyDataListeners.add(onNotifyDataListener);
         }
     }
 
+    /**
+     * 移除监听notify和Indication数据
+     * @param onNotifyDataListener BLE Notify(Indication)透传数据接口
+     */
     public void removeOnNotifyDataListener(OnBleNotifyDataListener onNotifyDataListener) {
         if (mOnBleNotifyDataListeners != null) {
             mOnBleNotifyDataListeners.remove(onNotifyDataListener);

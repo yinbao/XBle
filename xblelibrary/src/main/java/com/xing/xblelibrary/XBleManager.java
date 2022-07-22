@@ -9,10 +9,6 @@ import android.content.ServiceConnection;
 import android.os.Build;
 import android.os.IBinder;
 
-import androidx.annotation.DrawableRes;
-import androidx.annotation.Nullable;
-import androidx.annotation.RequiresApi;
-
 import com.xing.xblelibrary.bean.AdBleBroadcastBean;
 import com.xing.xblelibrary.bean.BleBroadcastBean;
 import com.xing.xblelibrary.config.XBleConfig;
@@ -24,11 +20,16 @@ import com.xing.xblelibrary.listener.OnBleConnectListener;
 import com.xing.xblelibrary.listener.OnBleScanFilterListener;
 import com.xing.xblelibrary.listener.OnBleStatusListener;
 import com.xing.xblelibrary.server.XBleServer;
+import com.xing.xblelibrary.utils.UuidUtils;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+
+import androidx.annotation.DrawableRes;
+import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
 
 /**
  * xing<br>
@@ -191,8 +192,7 @@ public class XBleManager {
             if (autoConnectSystemBle) {
                 mXBleServer.autoConnectSystemBle();
             }
-            mXBleServer.setAutoMonitorSystemConnectBle(XBleConfig.getInstance()
-                    .isAutoMonitorSystemConnectBle());
+            mXBleServer.setAutoMonitorSystemConnectBle(XBleConfig.getInstance().isAutoMonitorSystemConnectBle());
         }
     }
 
@@ -225,6 +225,21 @@ public class XBleManager {
         }
     }
 
+
+    /**
+     * 搜索设备
+     * @param timeOut 超时时间,ms
+     * @param scanStr 扫描过滤的uuidStr
+     */
+    public void startScan(long timeOut, String... scanStr) {
+        if (checkBluetoothServiceStatus()) {
+            UUID[] uuids=new UUID[scanStr.length];
+            for (int i = 0; i < scanStr.length; i++) {
+                uuids[i]=UuidUtils.getUuid(scanStr[i]);
+            }
+            startScan(timeOut, uuids);
+        }
+    }
 
     /**
      * 停止搜索
@@ -412,6 +427,7 @@ public class XBleManager {
 
     /**
      * 监听蓝牙状态
+     * @param listener 蓝牙状态接口
      */
     public void setOnBleStatusListener(OnBleStatusListener listener) {
         if (checkBluetoothServiceStatus()) {
@@ -445,6 +461,12 @@ public class XBleManager {
     }
 
 
+    /**
+     * 设置最大连接数,默认值:5
+     * 最大值不能超过7,最小值为1
+     * 超过最大连接数的时候会连接失败,通过接口返回{@link OnBleConnectListener#onConnectMaxErr}
+     * @param connectMax 最大连接数
+     */
     public void setConnectMax(int connectMax) {
         if (mXBleServer != null) {
             if (connectMax > 7) {

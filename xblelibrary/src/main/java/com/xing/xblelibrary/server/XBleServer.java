@@ -38,11 +38,6 @@ import android.os.Message;
 import android.os.ParcelUuid;
 import android.os.SystemClock;
 
-import androidx.annotation.DrawableRes;
-import androidx.annotation.Nullable;
-import androidx.annotation.RequiresApi;
-import androidx.annotation.RequiresPermission;
-
 import com.xing.xblelibrary.bean.AdBleBroadcastBean;
 import com.xing.xblelibrary.bean.BleBroadcastBean;
 import com.xing.xblelibrary.config.XBleConfig;
@@ -66,6 +61,11 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+
+import androidx.annotation.DrawableRes;
+import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
+import androidx.annotation.RequiresPermission;
 
 /**
  * xing<br>
@@ -167,7 +167,7 @@ public class XBleServer extends Service {
     /**
      * 最大连接数
      */
-    private int mConnectMax = 7;
+    private int mConnectMax = 5;
 
     private Handler mHandler = new Handler(Looper.myLooper()) {
 
@@ -1527,6 +1527,10 @@ public class XBleServer extends Service {
      */
     private volatile boolean mAutoMonitorSystemConnectBle = false;
 
+    /**
+     * 设置是否监听系统BLE的连接
+     * @param autoMonitorSystemConnectBle 默认为false
+     */
     public void setAutoMonitorSystemConnectBle(boolean autoMonitorSystemConnectBle) {
         mAutoMonitorSystemConnectBle = autoMonitorSystemConnectBle;
     }

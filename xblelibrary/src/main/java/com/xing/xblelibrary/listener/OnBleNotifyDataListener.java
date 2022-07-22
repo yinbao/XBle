@@ -5,13 +5,13 @@ import android.bluetooth.BluetoothGattCharacteristic;
 /**
  * xing<br>
  * 2021/07/21<br>
- * 透传数据接口
+ * BLE Notify(Indication)透传数据接口
  */
 public interface OnBleNotifyDataListener {
 
 
     /**
-     * notify返回的数据
+     * Notify(Indication)返回的数据
      *
      * @param characteristic BluetoothGattCharacteristic
      * @param data           byte[]
