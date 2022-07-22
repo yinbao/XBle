@@ -1,7 +1,7 @@
 package com.xing.xblelibrary.listener;
 
 /**
- * 连接断开接口
+ * BleDevice对接连接断开接口
  */
 public interface onBleDisConnectedListener {
 

@@ -9,9 +9,6 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 
-import androidx.annotation.CallSuper;
-import androidx.annotation.RequiresApi;
-
 import com.xing.xblelibrary.config.XBleStaticConfig;
 import com.xing.xblelibrary.listener.OnBleCharacteristicListener;
 import com.xing.xblelibrary.listener.OnBleMtuListener;
@@ -22,9 +19,13 @@ import com.xing.xblelibrary.listener.onBleDisConnectedListener;
 import com.xing.xblelibrary.utils.MyBleDeviceUtils;
 import com.xing.xblelibrary.utils.XBleL;
 
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.UUID;
+
+import androidx.annotation.CallSuper;
+import androidx.annotation.RequiresApi;
 
 /**
  * xing<br>
@@ -64,7 +65,6 @@ public final class BleDevice {
     private OnBleSendResultListener mOnBleSendResultListener;
     private onBleDisConnectedListener mOnDisConnectedListener;
     private OnBleNotifyDataListener mOnNotifyDataListener;
-
     private OnBleRssiListener mOnBleRssiListener;
     private OnBleMtuListener mOnBleMtuListener;
     private OnBleCharacteristicListener mOnCharacteristicListener;
@@ -158,7 +158,7 @@ public final class BleDevice {
     /**
      * 开启多个Indication,如果多个服务,可重复调用
      *
-     * @param uuidService uuidService
+     * @param uuidService    uuidService
      * @param uuidIndication uuidIndication
      */
     public void setIndication(UUID uuidService, UUID... uuidIndication) {
@@ -275,11 +275,23 @@ public final class BleDevice {
     @CallSuper
     public void onDisConnected() {
         XBleL.i("断开连接,清空发送队列");
-        //清空发送队列
-        mHandler.removeCallbacksAndMessages(null);
         if (mOnDisConnectedListener != null) {
             mOnDisConnectedListener.onDisConnected();
         }
+
+        if (mOnBleDisConnectedListeners!=null){
+            for (onBleDisConnectedListener onBleDisConnectedListener : mOnBleDisConnectedListeners) {
+                onBleDisConnectedListener.onDisConnected();
+            }
+        }
+
+        //清空发送队列
+        mHandler.removeCallbacksAndMessages(null);
+        mOnBleCharacteristicListeners.clear();
+        mOnBleNotifyDataListeners.clear();
+        mOnBleDisConnectedListeners.clear();
+
+
     }
 
 
@@ -291,11 +303,23 @@ public final class BleDevice {
             mOnCharacteristicListener.onCharacteristicChanged(characteristic);
         }
 
+        if (mOnBleCharacteristicListeners!=null) {
+            for (OnBleCharacteristicListener onBleCharacteristicListener : mOnBleCharacteristicListeners) {
+                onBleCharacteristicListener.onCharacteristicChanged(characteristic);
+            }
+        }
+
+
 
         if (mOnNotifyDataListener != null) {
-            UUID uuid = characteristic.getUuid();
             byte[] value = characteristic.getValue();
             mOnNotifyDataListener.onNotifyData(characteristic, value);
+        }
+        if (mOnBleNotifyDataListeners != null) {
+            for (OnBleNotifyDataListener onBleNotifyDataListener : mOnBleNotifyDataListeners) {
+                byte[] value = characteristic.getValue();
+                onBleNotifyDataListener.onNotifyData(characteristic, value);
+            }
         }
     }
 
@@ -310,7 +334,7 @@ public final class BleDevice {
     /**
      * 返回的Mtu,系统返回setMtu后会触发,需要硬件支持设置才会生效
      *
-     * @param mtu  吞吐量(23~517)
+     * @param mtu 吞吐量(23~517)
      */
     public void OnMtu(int mtu) {
         if (mOnBleMtuListener != null) {
@@ -370,6 +394,11 @@ public final class BleDevice {
             mOnCharacteristicListener.onCharacteristicReadOK(characteristic);
         }
 
+        if (mOnBleCharacteristicListeners!=null) {
+            for (OnBleCharacteristicListener onBleCharacteristicListener : mOnBleCharacteristicListeners) {
+                onBleCharacteristicListener.onCharacteristicReadOK(characteristic);
+            }
+        }
     }
 
 
@@ -378,14 +407,25 @@ public final class BleDevice {
         if (mOnCharacteristicListener != null) {
             mOnCharacteristicListener.onCharacteristicWriteOK(characteristic);
         }
+
+        if (mOnBleCharacteristicListeners!=null) {
+            for (OnBleCharacteristicListener onBleCharacteristicListener : mOnBleCharacteristicListeners) {
+                onBleCharacteristicListener.onCharacteristicWriteOK(characteristic);
+            }
+        }
     }
 
     @CallSuper
     public void descriptorWriteOk(BluetoothGattDescriptor descriptor) {
         if (descriptor != null) {
-            UUID uuid = descriptor.getCharacteristic().getUuid();
             if (mOnCharacteristicListener != null) {
                 mOnCharacteristicListener.onDescriptorWriteOK(descriptor);
+            }
+
+            if (mOnBleCharacteristicListeners!=null) {
+                for (OnBleCharacteristicListener onBleCharacteristicListener : mOnBleCharacteristicListeners) {
+                    onBleCharacteristicListener.onDescriptorWriteOK(descriptor);
+                }
             }
         }
         if (mLinkedListNotify.size() > 0) {
@@ -443,8 +483,7 @@ public final class BleDevice {
                 if (mLinkedList.size() > 0) {
                     SendDataBean sendDataBean = mLinkedList.pollLast();
                     if (sendDataBean != null) {
-                        boolean result=sendCmd(sendDataBean.getHex(), sendDataBean.getUuid(), sendDataBean.getType(), sendDataBean.getUuidService());
-
+                        boolean result = sendCmd(sendDataBean.getHex(), sendDataBean.getUuid(), sendDataBean.getType(), sendDataBean.getUuidService());
                         if (mResend) {
                             if (!result) {
                                 //发送失败
@@ -512,7 +551,7 @@ public final class BleDevice {
 
                             case XBleStaticConfig.NOTICE_DATA:
                             case XBleStaticConfig.INDICATION_DATA:
-                                if ((properties & BluetoothGattCharacteristic.PROPERTY_NOTIFY) != 0x00||(properties & BluetoothGattCharacteristic.PROPERTY_INDICATE) != 0x00) {
+                                if ((properties & BluetoothGattCharacteristic.PROPERTY_NOTIFY) != 0x00 || (properties & BluetoothGattCharacteristic.PROPERTY_INDICATE) != 0x00) {
                                     gatt.setCharacteristicNotification(mCharacteristic, true);
                                     BluetoothGattDescriptor bluetoothGattDescriptor = mCharacteristic.getDescriptor(XBleStaticConfig.UUID_NOTIFY_DESCRIPTOR);
                                     if (bluetoothGattDescriptor != null) {
@@ -532,7 +571,6 @@ public final class BleDevice {
                                 } else {
                                     descriptorWriteOk(null);
                                 }
-
                                 break;
                         }
                     } else if (type == XBleStaticConfig.NOTICE_DATA) {
@@ -556,10 +594,6 @@ public final class BleDevice {
         return sendOk;
     }
 
-
-    public void setOnCharacteristicListener(OnBleCharacteristicListener onCharacteristicListener) {
-        mOnCharacteristicListener = onCharacteristicListener;
-    }
 
     public void setOnBleRssiListener(OnBleRssiListener onBleRssiListener) {
         mOnBleRssiListener = onBleRssiListener;
@@ -604,10 +638,10 @@ public final class BleDevice {
     /**
      * 是否需要重发机制
      *
-     * @param resend 默认false
+     * @param resend       默认false
      * @param resendNumber resend为false的时候无效重发次数,默认3
      */
-    public void setResend(boolean resend,int resendNumber) {
+    public void setResend(boolean resend, int resendNumber) {
         mResend = resend;
         mResendNumber = resendNumber;
     }
@@ -615,14 +649,81 @@ public final class BleDevice {
 
     //---------------
 
-
+    /**
+     * 将会在3.x的版本中移除
+     * see {@link BleDevice#addOnDisConnectedListener} or {@link BleDevice#removeOnDisConnectedListener}
+     */
+    @Deprecated
     public void setOnDisConnectedListener(onBleDisConnectedListener onDisConnectedListener) {
         mOnDisConnectedListener = onDisConnectedListener;
     }
 
+    private List<onBleDisConnectedListener> mOnBleDisConnectedListeners=new ArrayList<>();
+
+    public void addOnDisConnectedListener(onBleDisConnectedListener listener) {
+        if (!mOnBleDisConnectedListeners.contains(listener)) {
+            mOnBleDisConnectedListeners.add(listener);
+        }
+    }
+
+    public void removeOnDisConnectedListener(onBleDisConnectedListener listener) {
+        if (mOnBleDisConnectedListeners!=null) {
+            mOnBleDisConnectedListeners.remove(listener);
+        }
+    }
+
+    //------------------OnBleCharacteristicListener--------------------------
+
+    /**
+     * 将会在3.x的版本中移除
+     * see {@link BleDevice#addOnCharacteristicListener} or {@link BleDevice#removeOnCharacteristicListener}
+     */
+    @Deprecated
+    public void setOnCharacteristicListener(OnBleCharacteristicListener onCharacteristicListener) {
+        mOnCharacteristicListener = onCharacteristicListener;
+    }
+
+    private List<OnBleCharacteristicListener> mOnBleCharacteristicListeners = new ArrayList<>();
+
+    public void addOnCharacteristicListener(OnBleCharacteristicListener onCharacteristicListener) {
+        if (!mOnBleCharacteristicListeners.contains(onCharacteristicListener)) {
+            mOnBleCharacteristicListeners.add(onCharacteristicListener);
+        }
+    }
+
+
+    public void removeOnCharacteristicListener(OnBleCharacteristicListener onCharacteristicListener) {
+        if (mOnBleCharacteristicListeners != null) {
+            mOnBleCharacteristicListeners.remove(onCharacteristicListener);
+        }
+    }
+
+
+    //------------------OnBleNotifyDataListener--------------------------
+
+    /**
+     * 将会在3.x的版本中移除
+     * see {@link BleDevice#addOnNotifyDataListener} or {@link BleDevice#removeOnNotifyDataListener}
+     */
+    @Deprecated
     public void setOnNotifyDataListener(OnBleNotifyDataListener onNotifyDataListener) {
         mOnNotifyDataListener = onNotifyDataListener;
     }
 
+
+    private List<OnBleNotifyDataListener> mOnBleNotifyDataListeners = new ArrayList<>();
+
+    public void addOnNotifyDataListener(OnBleNotifyDataListener onNotifyDataListener) {
+        if (!mOnBleNotifyDataListeners.contains(onNotifyDataListener)) {
+            mOnBleNotifyDataListeners.add(onNotifyDataListener);
+        }
+    }
+
+    public void removeOnNotifyDataListener(OnBleNotifyDataListener onNotifyDataListener) {
+        if (mOnBleNotifyDataListeners != null) {
+            mOnBleNotifyDataListeners.remove(onNotifyDataListener);
+        }
+
+    }
 
 }
