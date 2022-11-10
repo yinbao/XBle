@@ -60,7 +60,6 @@ public final class BleDevice {
      * 发送数据的队列
      */
     private final LinkedList<SendDataBean> mLinkedList = new LinkedList<>();
-    private final LinkedList<SendDataBean> mLinkedListNotify = new LinkedList<>();
 
     private OnBleSendResultListener mOnBleSendResultListener;
     private onBleDisConnectedListener mOnDisConnectedListener;
@@ -207,11 +206,11 @@ public final class BleDevice {
      * 设置通知,有发送队列,不会马上生效,会等待系统回调设置成功后再会设置下一个,一般间隔在100ms左右,与固件性能有关
      */
     private void sendOpenNotify(UUID uuidService, UUID uuidNotify) {
-        mLinkedListNotify.addFirst(new SendDataBean(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE, uuidNotify, XBleStaticConfig.NOTICE_DATA, uuidService));
-        if (mLinkedListNotify.size() <= 1) {
+        mLinkedList.addFirst(new SendDataBean(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE, uuidNotify, XBleStaticConfig.NOTICE_DATA, uuidService));
+        if (mLinkedList.size() <= 1) {
             mHandler.removeMessages(SEND_DATA_KEY);
-            SendDataBean sendDataBean = mLinkedListNotify.getLast();
-            sendCmd(sendDataBean.getHex(), sendDataBean.getUuid(), sendDataBean.getType(), sendDataBean.getUuidService());
+            SendDataBean sendDataBean = mLinkedList.getLast();
+            sendData(sendDataBean);
         }
     }
 
@@ -219,19 +218,19 @@ public final class BleDevice {
      * 设置通知,有发送队列,不会马上生效,会等待系统回调设置成功后再会设置下一个,一般间隔在100ms左右,与固件性能有关
      */
     private void sendOpenIndication(UUID uuidService, UUID uuidNotify) {
-        mLinkedListNotify.addFirst(new SendDataBean(BluetoothGattDescriptor.ENABLE_INDICATION_VALUE, uuidNotify, XBleStaticConfig.NOTICE_DATA, uuidService));
-        if (mLinkedListNotify.size() <= 1) {
+        mLinkedList.addFirst(new SendDataBean(BluetoothGattDescriptor.ENABLE_INDICATION_VALUE, uuidNotify, XBleStaticConfig.NOTICE_DATA, uuidService));
+        if (mLinkedList.size() <= 1) {
             mHandler.removeMessages(SEND_DATA_KEY);
-            SendDataBean sendDataBean = mLinkedListNotify.getLast();
-            sendCmd(sendDataBean.getHex(), sendDataBean.getUuid(), sendDataBean.getType(), sendDataBean.getUuidService());
+            SendDataBean sendDataBean = mLinkedList.getLast();
+            sendData(sendDataBean);
         }
     }
 
     public void setCloseNotify(UUID uuidService, UUID uuidNotify) {
-        mLinkedListNotify.addFirst(new SendDataBean(BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE, uuidNotify, XBleStaticConfig.NOTICE_DATA, uuidService));
-        if (mLinkedListNotify.size() <= 1) {
-            SendDataBean sendDataBean = mLinkedListNotify.getLast();
-            sendCmd(sendDataBean.getHex(), sendDataBean.getUuid(), sendDataBean.getType(), sendDataBean.getUuidService());
+        mLinkedList.addFirst(new SendDataBean(BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE, uuidNotify, XBleStaticConfig.NOTICE_DATA, uuidService));
+        if (mLinkedList.size() <= 1) {
+            SendDataBean sendDataBean = mLinkedList.getLast();
+            sendData(sendDataBean);
         }
     }
 
@@ -427,17 +426,11 @@ public final class BleDevice {
                     onBleCharacteristicListener.onDescriptorWriteOK(descriptor);
                 }
             }
-        }
-        if (mLinkedListNotify.size() > 0) {
-            mLinkedListNotify.removeLast();
-            if (mLinkedListNotify.size() > 0) {
-                SendDataBean sendDataBean = mLinkedListNotify.getLast();
-                sendCmd(sendDataBean.getHex(), sendDataBean.getUuid(), sendDataBean.getType(), sendDataBean.getUuidService());
-                mHandler.removeMessages(SEND_DATA_KEY);
-            } else {
-                mHandler.removeMessages(SEND_DATA_KEY);
-                mHandler.sendEmptyMessageDelayed(SEND_DATA_KEY, mSendDataInterval);
-            }
+            mHandler.removeMessages(SEND_DATA_KEY);
+            mHandler.sendEmptyMessage(SEND_DATA_KEY);
+        }else {
+            mHandler.removeMessages(SEND_DATA_KEY);
+            mHandler.sendEmptyMessageDelayed(SEND_DATA_KEY, mSendDataInterval);
         }
 
     }
@@ -449,17 +442,18 @@ public final class BleDevice {
      * @param sendDataBean SendDataBean
      */
     public synchronized void sendData(SendDataBean sendDataBean) {
-        if (sendDataBean == null)
+        if (sendDataBean == null) {
             return;
+        }
         //消息是否需要置顶发送,默认false
         if (sendDataBean.isTop()) {
             mLinkedList.addLast(sendDataBean);
         } else {
             mLinkedList.addFirst(sendDataBean);
         }
-        if (mLinkedList.size() <= 1 && mLinkedListNotify.size() <= 0) {
+        if (!mSendStatus) {
             mHandler.removeMessages(SEND_DATA_KEY);
-            mHandler.sendEmptyMessageDelayed(SEND_DATA_KEY, mSendDataInterval / 2);
+            mHandler.sendEmptyMessage(SEND_DATA_KEY);
         }
     }
 
@@ -470,19 +464,23 @@ public final class BleDevice {
      * @param sendDataBean SendDataBean
      */
     public synchronized boolean sendDataNow(SendDataBean sendDataBean) {
-        if (sendDataBean == null)
+        if (sendDataBean == null) {
             return false;
+        }
         return sendCmd(sendDataBean.getHex(), sendDataBean.getUuid(), sendDataBean.getType(), sendDataBean.getUuidService());
     }
 
+    private volatile boolean mSendStatus = false;
 
     private final Handler mHandler = new Handler(Looper.myLooper()) {
         @Override
         public void handleMessage(Message msg) {
             if (msg.what == SEND_DATA_KEY) {
                 if (mLinkedList.size() > 0) {
+                    mSendStatus = true;
                     SendDataBean sendDataBean = mLinkedList.pollLast();
                     if (sendDataBean != null) {
+                        mHandler.sendEmptyMessageDelayed(SEND_DATA_KEY, mSendDataInterval);//设置间隔,避免发送失败
                         boolean result = sendCmd(sendDataBean.getHex(), sendDataBean.getUuid(), sendDataBean.getType(), sendDataBean.getUuidService());
                         if (mResend) {
                             if (!result) {
@@ -494,10 +492,11 @@ public final class BleDevice {
                                 }
                             }
                         }
+                    }else {
                         mHandler.sendEmptyMessageDelayed(SEND_DATA_KEY, mSendDataInterval);//设置间隔,避免发送失败
-                    } else {
-                        mHandler.sendEmptyMessage(SEND_DATA_KEY);//没有需要发送的数据,不需要间隔
                     }
+                }else {
+                    mSendStatus = false;
                 }
             }
         }
@@ -564,6 +563,8 @@ public final class BleDevice {
                                             XBleL.e(TAG, "NOTICE_DATA:UUID=" + uuid + " || false");
                                             descriptorWriteOk(null);
                                             return false;
+                                        }else {
+                                            mHandler.removeMessages(SEND_DATA_KEY);
                                         }
                                     } else {
                                         descriptorWriteOk(null);
@@ -571,6 +572,10 @@ public final class BleDevice {
                                 } else {
                                     descriptorWriteOk(null);
                                 }
+                                break;
+
+                            default:
+
                                 break;
                         }
                     } else if (type == XBleStaticConfig.NOTICE_DATA) {

@@ -3,6 +3,8 @@ package com.xing.xblelibrary.listener;
 
 import com.xing.xblelibrary.bean.BleBroadcastBean;
 
+import androidx.annotation.CallSuper;
+
 /**
  * xing<br>
  * 2021/07/21<br>
@@ -39,10 +41,30 @@ public interface OnBleScanFilterListener {
      */
     default void onScanComplete(){}
 
+
+
+
     /**
      * 扫描异常
+     *
      * @param time 多少ms后才可以再次进行扫描
      */
-    default void onScanErr(long time){}
+    @Deprecated
+    default void onScanErr(long time) {
 
+    }
+
+    /**
+     * 在扫描犯错
+     * 扫描异常
+     *
+     * @param time 多少ms后才可以再次进行扫描
+     * @param type 类型 1=连接太频繁,2=连续3次扫描失败,建议重启蓝牙
+     */
+    @CallSuper
+    default void onScanErr(int type, long time) {
+        if (type==1){
+            onScanErr(time);
+        }
+    }
 }
