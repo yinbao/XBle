@@ -26,7 +26,7 @@
                 android:layout_height="wrap_content"
                 android:text="0000FFD0"
                 android:maxLength="8"
-                android:digits="0123456789abcdef"
+                android:digits="0123456789abcdefABCDEF"
                 />
 
 
@@ -47,7 +47,7 @@
                 android:text="496E"
                 android:hint="ID"
                 android:maxLength="4"
-                android:digits="0123456789abcdef"
+                android:digits="0123456789abcdefABCDEF"
                 />
             <EditText
                 android:id="@+id/et_ad_data"
@@ -55,7 +55,7 @@
                 android:layout_height="wrap_content"
                 android:text="003100000000"
                 android:hint="内容"
-                android:digits="0123456789abcdef"
+                android:digits="0123456789abcdefABCDEF"
                 />
 
 

@@ -22,6 +22,7 @@ import com.xing.xblelibrary.device.AdBleDevice;
 import com.xing.xblelibrary.device.SendDataBean;
 import com.xing.xblelibrary.listener.OnBleAdvertiserConnectListener;
 import com.xing.xblelibrary.listener.OnBleNotifyDataListener;
+import com.xing.xblelibrary.utils.UuidUtils;
 import com.xing.xblelibrary.utils.XBleL;
 
 import java.util.ArrayList;
@@ -130,7 +131,7 @@ public class PhonePeripheralActivity extends AppCompatActivity implements View.O
 //                AdBleValueBean adBleValueBean = AdBleValueBean.parseAdBytes(new byte[]{});//通过广播数据生成广播对象
                 AdBleBroadcastBean adBleValueBean = AdBleBroadcastBean.newBuilder().addGattService(adGattService)//只做广播可免除
 //                        .setConnectable(false)//是否可连接,默认可连接
-                        .addAdServiceUuid(UUID_SERVER_BROADCAST).setTimeoutMillis(0)//一直广播
+                        .addAdServiceUuid(UuidUtils.getUuid(adUUID).toString()).setTimeoutMillis(0)//一直广播
                         .setIncludeTxPowerLevel(false)//不广播功耗
                         .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY)//低延迟
                         .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_HIGH)//发射功率高
@@ -187,8 +188,9 @@ public class PhonePeripheralActivity extends AppCompatActivity implements View.O
 
     @Override
     public void onStartAdSuccess( AdvertiseSettings advertiseSettings) {
-        if (advertiseSettings != null)
+        if (advertiseSettings != null) {
             XBleL.i("广播成功:" + advertiseSettings.toString());
+        }
         mListData.add(0, TimeUtils.getCurrentTimeStr()+"广播成功");
         mHandler.sendEmptyMessage(REFRESH_DATA);
     }

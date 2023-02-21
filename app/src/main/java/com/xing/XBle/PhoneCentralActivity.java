@@ -24,12 +24,6 @@ import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.TextView;
 
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
-
 import com.xing.xblelibrary.XBleManager;
 import com.xing.xblelibrary.bean.BleBroadcastBean;
 import com.xing.xblelibrary.config.XBleStaticConfig;
@@ -43,6 +37,12 @@ import com.xing.xblelibrary.utils.XBleL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
 /**
  * xing<br>
@@ -138,7 +138,7 @@ public class PhoneCentralActivity extends AppCompatActivity implements View.OnCl
         int id = v.getId();
          if (id == R.id.btn_start_scan) {
 
-            XBleManager.getInstance().startScan(30000);
+            XBleManager.getInstance().startScan(30000,(UUID[]) null);
         } else if (id == R.id.btn_stop_scan) {
             XBleManager.getInstance().stopScan();
             mListData.add(0, TimeUtils.getCurrentTimeStr() + "停止扫描");
@@ -279,8 +279,9 @@ public class PhoneCentralActivity extends AppCompatActivity implements View.OnCl
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
 
         //请求权限被拒绝
-        if (requestCode != PERMISSION)
+        if (requestCode != PERMISSION) {
             return;
+        }
         if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
             initPermissions();
         } else {
@@ -311,7 +312,7 @@ public class PhoneCentralActivity extends AppCompatActivity implements View.OnCl
      */
     protected void onPermissionsOk() {
         XBleManager.getInstance().setOnScanFilterListener(this);//设置监听
-        XBleManager.getInstance().startScan(10000);//开始搜索
+        XBleManager.getInstance().startScan(10000,(UUID[]) null);//开始搜索
         mListData.add(0, TimeUtils.getCurrentTimeStr() + "开始扫描:10S");
     }
 
