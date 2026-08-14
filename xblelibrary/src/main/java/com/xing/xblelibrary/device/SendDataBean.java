@@ -38,6 +38,10 @@ public class SendDataBean {
      */
     private boolean mTop = false;
     /**
+     * 已重发次数
+     */
+    private int mResendNumber = 0;
+    /**
      * 服务的uuid
      */
     private UUID uuidService = null;
@@ -105,6 +109,15 @@ public class SendDataBean {
 
     public void setTop(boolean top) {
         mTop = top;
+    }
+
+
+    public int getResendNumber() {
+        return mResendNumber;
+    }
+
+    public void addResendNumber() {
+        mResendNumber += 1;
     }
 
 
