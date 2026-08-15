@@ -1,630 +1,332 @@
-# XBle使用说明
+# XBle 使用说明
+
 [![](https://jitpack.io/v/yinbao/XBle.svg)](https://jitpack.io/#yinbao/XBle)
 
-## 功能
-- **支持多设备连接管理；**
+Android BLE 库：支持多设备连接、扫描过滤、队列发送、手机作为中央 / 外围设备。
 
-- **支持广播包解析；**
-
-- **支持自定义扫描过滤条件；**
-
-- **支持根据设备 UUID 过滤扫描设备；**
-
-- **支持根据 MAC 地址连接指定的设备；**
-
-- **支持监听系统(其他APP连接BLE)**
-
-- **支持已队列的形式发送数据(BLE接收速度过快可能会导致MCU异常)；**
-
-- **支持注册和取消通知监听；**
-
-- **支持配置最大连接数，超过最大连接数时会返回当前连接的设备MAC地址列表；**
-
-- **支持配置扫描、连接超时时间；**
-
-- **支持自定义广播数据,可以作为中继功能；**
-
-- **支持手机作为外围设备被其他设备连接；**
-
-- **支持手机作为外围设备被多个设备连接,可以作为中继功能；**
-
-- **支持读取别的设备的广播数据,然后再发出来；**
-
+更偏「快速上手」的模块说明见：[xblelibrary/README.md](xblelibrary/README.md)
 
 ![手机广播的数据](https://github.com/yinbao/XBle/blob/master/BroadcastData.jpeg)
 ![手机作外围](https://github.com/yinbao/XBle/blob/master/peripheral.jpg)
 ![手机作中央](https://github.com/yinbao/XBle/blob/master/central.jpg)
 
-##  使用条件
-1. Android SDK最低版本android4.4（API 19).
-2. 设备所使用蓝牙版本需要4.0及以上。
-3. 配置java1.8
-4. 项目依赖androidx库
+## 功能
 
-##  添加依赖
+- 多设备连接管理（可配置最大连接数 1~7）
+- 广播包解析与自定义扫描过滤（含 Service UUID 过滤）
+- 按 MAC 连接；队列发送，避免发太快导致外设异常
+- Notify 注册 / 取消；读写、RSSI、MTU、连接优先级
+- 可选：自动连接 / 监听系统已连接的 BLE
+- 手机作为外围设备广播，可被多个中央连接（中继场景）
+- 前台服务保活（可选）
 
+## 使用条件
+
+1. `minSdk` 19（Android 4.4+）
+2. 设备蓝牙 4.0+
+3. Java 11（`sourceCompatibility` / `targetCompatibility` 11）
+4. 依赖 AndroidX
+
+## 添加依赖
+
+```gradle
+// root build.gradle / settings 仓库中增加
+maven { url 'https://jitpack.io' }
+
+// app 模块
+dependencies {
+    implementation 'com.github.yinbao:XBle:+'  // 版本号以 JitPack 徽章为准
+}
 ```
 
 
-1.将JitPack存储库添加到您的构建文件中
-将其添加到存储库末尾的root build.gradle中：
-	allprojects {
-		repositories {
-			...
-			maven { url 'https://jitpack.io' }
-		}
-	}
+## 权限
 
-2.添加依赖项,最新版本号请参考文档开头
-	dependencies {
-	        implementation 'com.github.yinbao:XBle:+'
-	}
+库 `AndroidManifest` 已声明部分权限与 `XBleServer`。业务侧仍需**运行时申请**。
 
-3.在gradle中配置java1.8
-    android {
-        ...
-        compileOptions {
-            sourceCompatibility 1.8
-            targetCompatibility 1.8
-        }
-		repositories {
-			flatDir {
-				dirs 'libs'
-			}
-		}
-	}
+常用权限（按系统版本裁剪）：
 
-
-```
-
-## 权限设置
-
-```
-<!--In most cases, you need to ensure that the device supports BLE.-->
+```xml
 <uses-feature
     android:name="android.hardware.bluetooth_le"
-    android:required="true"/>
+    android:required="true" />
 
-<uses-permission android:name="android.permission.BLUETOOTH"/>
-<uses-permission android:name="android.permission.BLUETOOTH_ADMIN"/>
-
-<!--Android 6.0 and above. Bluetooth scanning requires one of the following two permissions. You need to apply at run time.-->
-<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
-<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
-
-<!--Optional. If your app need dfu function.-->
-<uses-permission android:name="android.permission.INTERNET"/>
+<uses-permission android:name="android.permission.BLUETOOTH" />
+<uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+<!-- Android 6+ 扫描常需定位（运行时申请） -->
+<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+<!-- Android 12+ -->
+<uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
+<uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+<uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
 ```
 
->  6.0及以上系统必须要定位权限，且需要手动获取权限
+> Android 6+ 定位、Android 12+ 附近设备权限需动态申请。示例见 `app` 模块。
 
-## 开始集成
+---
 
-> 初始化
+## 初始化（必做）
 
-```
-//设置一些全局参数
+`init` 绑定后台 `XBleServer`，**幂等**，内部使用 Application Context。
+
+```java
+XBleL.init(true); // 可选：打开日志
+
 XBleManager.getXBleConfig()
-                .setConnectMax(7)//设置最多允许连接多少个设备(1~7)
-                .setAutoConnectSystemBle(false)//设置是否自动连接系统已连接的设备
-                .setAutoMonitorSystemConnectBle(false);//设置是否自动监听连接系统连接的设备,并在通用OnBleScanConnectListener接口中回调
+        .setConnectMax(7)                       // 最大连接数 1~7
+        .setAutoConnectSystemBle(false)         // 是否自动连接系统已连接设备
+        .setAutoMonitorSystemConnectBle(false); // 是否监听系统连接并回调
 
- XBleManager.getInstance().init(getApplication(), new onInitListener() {
-            @Override
-            public void onInitSuccess() {
-                //初始化完成
-            }
+XBleManager.getInstance().init(getApplicationContext(), new XBleManager.onInitListener() {
+    @Override
+    public void onInitSuccess() {
+        // 服务就绪后再扫 / 连更稳妥；未就绪的操作多数会排队
+    }
 
-            @Override
-            public void onInitFailure() {
-				//初始化失败
-            }
-        });
-
-
-
+    @Override
+    public void onInitFailure() {
+        // 绑定失败
+    }
+});
 ```
 
-## 手机作为中央设备(大部分情况下都是中央)
+| API | 说明 |
+|-----|------|
+| `isInitialized()` | 是否已 `init` |
+| `isReady()` | `XBleServer` 是否已绑定 |
+| `clear()` | 停扫、断连、清监听、解绑并释放 |
 
--  设置接口XBleManager.getInstance().setOnBleConnectListener();实现OnBleConnectListener接口可以连接,断开等状态以及数据
+未 `init` 调用扫描/连接等会抛 `IllegalStateException`。
 
+---
+
+## 手机作为中央设备
+
+### 监听（推荐 add，支持多处）
+
+连接与扫描均改为**观察者 + 弱引用**，可多处同时监听：
+
+```java
+XBleManager.getInstance().addBleConnectListener(this);
+XBleManager.getInstance().addBleScanFilterListener(this);
+
+// 页面销毁时务必移除
+XBleManager.getInstance().removeBleConnectListener(this);
+XBleManager.getInstance().removeBleScanFilterListener(this);
+// 或
+XBleManager.getInstance().removeAllBleConnectListener();
+XBleManager.getInstance().removeAllBleScanFilterListener();
 ```
 
-/**
- * 蓝牙连接断开接口
- */
-public interface OnBleConnectListener extends OnBleStatusListener{
+> 旧 API `setOnBleConnectListener` / `setOnScanFilterListener` 已 `@Deprecated`，内部转调 `add`。
 
-    /**
-     * 正在连接
-     */
-    default void onConnecting(String mac){}
+蓝牙开关（单监听、弱引用）：
 
-    /**
-     * 连接错误,当前连接已达系统限制最大值7个
-     * @param list 当前已连接的设备对象列表
-     */
-    default void onConnectMaxErr(List<BluetoothDevice> list){}
+```java
+XBleManager.getInstance().setOnBleStatusListener(listener); // 传 null 清除
+```
 
-    /**
-     * 连接断开,在UI线程
-     */
-    default void onDisConnected(String mac, int code) {
-    }
+#### OnBleConnectListener
 
-    /**
-     * 连接成功,还没有获取到服务
-     */
-    default void onConnectionSuccess(String mac) {
-    }
-
-    /**
-     * 连接成功(发现服务),在UI线程
-     */
-    default void onServicesDiscovered(String mac) {
-    }
-
+```java
+public interface OnBleConnectListener extends OnBleStatusListener {
+    default void onConnecting(String mac) {}
+    default void onConnectMaxErr(List<BluetoothDevice> list) {}
+    default void onDisConnected(String mac, int code) {}
+    default void onConnectionSuccess(String mac) {}      // 已连接，未发现服务
+    default void onServicesDiscovered(String mac) {}     // 可 getBleDevice 操作
+    // bleOpen() / bleClose() 来自 OnBleStatusListener
 }
-
-
 ```
 
--  设置接口XBleManager.getInstance().setOnBleScanFilterListener();实现OnBleScanFilterListener接口可以获取扫描设备等信息和蓝牙状态
+#### OnBleScanFilterListener
 
-```
+```java
 public interface OnBleScanFilterListener {
-
-    /**
-     * 开始扫描设备
-     */
-    default void onStartScan(){}
-
-    /**
-     * 过滤计算->可以对广播数据进行帅选过滤
-     *
-     * @param bleBroadcastBean 蓝牙广播数据
-     * @return 是否有效
-     */
-    default boolean onBleFilter(BleBroadcastBean bleBroadcastBean) {
-        return true;
-    }
-
-    /**
-     * 蓝牙广播数据-> 符合要求的广播数据对象返回
-     *
-     * @param bleBroadcastBean 搜索到的设备信息
-     */
-    default void onScanBleInfo(BleBroadcastBean bleBroadcastBean) {
-    }
-
-    /**
-     * 扫描完成
-     * 注:只有在扫描的时候传入了超时时间才会回调
-     */
-    default void onScanComplete(){}
-
-    /**
-     * 扫描异常
-     * @param time 多少ms后才可以再次进行扫描
-     */
-    default void onScanErr(long time){}
-
-}
-
-```
-
-
-
--  设置/取消/清空 观察者形式监听BLE连接断连状态:
-
-```
-
-设置:XBleManager.getInstance().addBleConnectListener(OnBleConnectListener);
-取消:XBleManager.getInstance().removeBleConnectListener(OnBleConnectListener);
-清空:XBleManager.getInstance().removeAllBleConnectListener();
-
-```
-
--  搜索  XBleManager.getInstance().startScan(long timeOut);//timeOut(毫秒)
-
-```
-    /**
-     * 搜索设备(不过滤)
-     * 扫描过于频繁会导致扫描失败
-     * 需要保证5次扫描总时长超过30s
-     * @param timeOut 超时时间,毫秒(搜索多久去取数据,0代表一直搜索)
-     */
-     startScan(long timeOut)
-
-   /**
-     * 搜索设备
-     * 扫描过于频繁会导致扫描失败
-     * 需要保证5次扫描总时长超过30s
-     * @param timeOut  超时时间,毫秒(搜索多久去取数据,0代表一直搜索)
-     * @param scanUUID 过滤的UUID(空数组代表不过滤)
-     */
-     startScan(long timeOut, UUID scanUUID)
-
-
-	搜索到的设备
-	会在OnCallbackBle接口中的onScanning(BleBroadcastBean data)返回
-	或者
-	在OnScanFilterListener接口中的onScanBleInfo(BleBroadcastBean bleValueBean)返回
-
-```
-
--  连接XBleManager.getInstance().connectDevice(BleBroadcastBean bleValueBean);或者connectDevice(String mAddress);
-
-```
-注:连接之前建议停止搜索XBleManager.getInstance().stopScan(),这样连接过程会更稳定
-连接成功并获取服务成功后会在OnCallbackBle接口中的onServicesDiscovered(String mac)返回
-```
-
--  断开连接
-
-```
-XBleManager.getInstance().disconnectAll();断开所有连接
-XBleManager对象只提供断开所有设备的方法,断开某个设备可用BleDevice.disconnect();方法断开连接
-XBleManager.getInstance().getBleDevice(String mac);可以获取BleDevice对象
-```
-
--  监听系统连接的BLE,可用于第三方APP连接BLE后,自己的APP可以获取到连接对象,进行读写操作(可以绕过BLE的握手校验等操作).监听连接成功后会在OnBleScanConnectListener接口返回结果
-
-```
-
-    /**
-     * 设备监听,监听指定的mac地址的设备,发现连接成功后马上连接获取操作的对象
-     *
-     * @param mAddress 设备地址,null或者空字符串可以监听所有的地址
-     * @param status   是否开启监听
-     */
-XBleManager.getInstance().deviceConnectListener(String mAddress, boolean status);
-
-```
-
--  获取连接的设备对象
-
-```
-
-BleDevice bleDevice =XBleManager.getInstance().getBleDevice(mAddress);
-BleDevice对象拥有对此设备的所有操作,包括断开连接,发送指令,接收指令等操作
-BleDevice.disconnect();//断开当前设备的连接
-BleDevice.sendData(SendDataBean sendDataBean)//发送指令,内容需要用SendDataBean装载
-
-
-    /**
-     * @param hex         发送的内容
-     * @param uuid        需要操作的特征uuid
-     * @param type        操作类型(1=读,2=写,3=信号强度) {@link BleConfig}
-     * @param uuidService 服务uuid
-     */
-    public SendDataBean(byte[] hex, UUID uuid, int type, UUID uuidService) {
-        this.hex = hex;
-        this.uuid = uuid;
-        this.type = type;
-        if (uuidService != null)
-            this.uuidService = uuidService;
- }
-
-由于发送数据存在发送队列,SendDataBean对象不建议复用,避免数据给覆盖;
-
-
-```
-
-- 前台服务设置
-
-```
-    /**
-     * 设置前台服务相关参数
-     * @param id id
-     * @param icon logo
-     * @param title 标题
-     * @param activityClass 跳转的activity
-     */
-XBleManager.getInstance().initForegroundService(int id, @DrawableRes int icon, String title, Class<?> activityClass)
-
-//启动前台服务,
-XBleManager.getInstance().startForeground();
-
-//停止前台服务
-XBleManager.getInstance().stopForeground();
-
-
-```
-
-
-##  较常用的接口介绍
-
-
--  BleDevice 中的setOnCharacteristicListener(OnCharacteristicListener onCharacteristicListener) //蓝牙低层返回的原始数据对象
-
-```
-public interface OnCharacteristicListener {
-
-
-    /**
-     * 读数据接口
-     *
-     * @param characteristic
-     */
-    default void onCharacteristicReadOK(BluetoothGattCharacteristic characteristic) {
-    }
-
-    /**
-     * 写数据接口
-     *
-     * @param characteristic
-     */
-    default void onCharacteristicWriteOK(BluetoothGattCharacteristic characteristic) {
-    }
-
-    /**
-     * 设置Notify成功的回调
-     */
-    default void onDescriptorWriteOK(BluetoothGattDescriptor descriptor) {
-    }
-
-    /**
-     * notify返回的数据
-     *
-     * @param characteristic
-     */
-    default void onCharacteristicChanged(BluetoothGattCharacteristic characteristic) {
-    }
-
-
-}
-
-```
-
-### BleDevice对象介绍
-
-- BleDevice是当前连接的对象,可以进行读写通知等操作,BleDevice对象可以在连接成功后通过XBleManager.getInstance().getBleDevice(mac);获取;BleDevice中的相关方法介绍
-
-```
-
-readRssi();//可以获取当前的信号值,从OnBleRssiListener接口返回,需要手动设置监听BleDevice.setOnBleRssiListener
-
-
-setNotify(UUID uuidService, UUID... uuidNotify);//可以设置一个Service下面的多个Notify,跟在后面即可,当有多个Service需要设置的时候多写几个setNotify即可.
-如果需要监听Notify结果,可以实现OnCharacteristicListener接口中的onDescriptorWriteOK方法
-
-setCloseNotify可以关闭相关Notify
-
-disconnect();//断开当前连接
-disconnect(boolean notice);//notice 断开后是否需要系统回调通知
-
-
-
-```
-
-- BleDevice中的setConnectPriority();可以设置连接参数,修改BLE的交互速率(需要硬件支持);android 5.0以上才支持
-
-```
-
-    /**
-     * 设置连接参数
-     *
-     * @param connectionPriority 参数
-	 * {@link BluetoothGatt.CONNECTION_PRIORITY_BALANCED}默认
-     * {@link BluetoothGatt.CONNECTION_PRIORITY_HIGH}高功率,提高传输速度
-     * {@link BluetoothGatt.CONNECTION_PRIORITY_LOW_POWER}低功率,传输速度减慢,更省电
-     * @return 结果
-     */
-    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
-    public boolean setConnectPriority(int connectionPriority) {
-        if (mBluetoothGatt != null) {
-            return mBluetoothGatt.requestConnectionPriority(connectionPriority);
-        }
-        return false;
-    }
-
-```
-
-- BleDevice中的setMtu();可以设置发送的最大字节数,理论值23~517(需要硬件支持);android 5.0以上才支持
-
-```
-
-    /**
-     * 返回的Mtu
-     *
-     * @param mtu 实际支持的最大字节数
-     */
-    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
-    public boolean setMtu(int mtu) {
-        if (mBluetoothGatt != null) {
-            return mBluetoothGatt.requestMtu(mtu);
-        }
-        return false;
-    }
-
-
-```
-
-
-- BleDevice中的sendData(SendDataBean);发送数据,内置发送队列;大部分BLE都是有接收间隔的,发送太快可能会导致BLE接收异常.
-- 某些情况下不需要发送队列,可以调用BleDevice中的sendDataNow(SendDataBean);立刻发送数据
-- BleDevice中的setSendDataInterval(int interval);可以设置发送队列的间隔,参数是毫秒(ms)
-
-```
-
-    /**
-     * 修改发送队列的间隔
-     * 默认是200ms
-     *
-     * @param interval 单位(ms)
-     */
-    public void setSendDataInterval(int interval) {
-        mSendDataInterval = interval;
-    }
-
-public class SendDataBean {
-    /**
-     * 发送的内容
-     */
-    private byte[] hex;
-    /**
-     * 需要操作的特征uuid
-     */
-    private UUID uuid;
-    /**
-     * 操作类型(
-	 * BleConfig.READ_DATA=读,
-	 * BleConfig.WRITE_DATA=写,
-	 * BleConfig.RSSI_DATA=信号强度)
-     */
-    private int type;
-
-    /**
-     * 消息是否需要置顶发送,默认false
-     */
-    private boolean mTop = false;
-    /**
-     * 服务的uuid
-     */
-    private UUID uuidService = null;
-}
-
-```
-
-
-- BleDevice中的getBluetoothGatt();可以拿到当前连接的GATT
-- BleDevice中的getMac();可以拿到当前连接的mac地址
-- BleDevice中的getName();可以拿到当前连接的设备名称
-
-
-## 手机作为外围设备(android 5.0以后才支持)
-
-
--  设置接口XBleManager.getInstance().setOnBleAdvertiserConnectListener();实现OnBleAdvertiserConnectListener接口可以获取搜索,连接,断开等状态以及数据
-
-```
-/**
- * xing<br>
- * 2021/07/22<br>
- * Ble作为外围广播监听
- */
-public interface OnBleAdvertiserConnectListener {
-
-    /**
-     * 开始广播
-     */
-    default void onStartAdvertiser(){}
-
-    /**
-     * 发送广播成功
-     */
-    default void onStartAdSuccess(int adId, AdvertiseSettings advertiseSettings) {
-    }
-
-    /**
-     * 发送广播失败
-     *
-     * @param errorCode 错误码:-1代表获取蓝牙对象为null
-     *                  {@link android.bluetooth.le.AdvertiseCallback#ADVERTISE_FAILED_DATA_TOO_LARGE}//广播数据超过31 byte
-     *                  {@link android.bluetooth.le.AdvertiseCallback#ADVERTISE_FAILED_TOO_MANY_ADVERTISERS}//没有装载广播对象
-     *                  {@link android.bluetooth.le.AdvertiseCallback#ADVERTISE_FAILED_ALREADY_STARTED}//已经在广播了
-     *                  {@link android.bluetooth.le.AdvertiseCallback#ADVERTISE_FAILED_INTERNAL_ERROR}//低层内部错误
-     *                  {@link android.bluetooth.le.AdvertiseCallback#ADVERTISE_FAILED_FEATURE_UNSUPPORTED}//硬件不支持
-     */
-    default void onStartAdFailure(int adId, int errorCode) {
-    }
-
-
-    /**
-     * 停止广播成功
-     */
-    default void onStopAdSuccess(int adId) {
-    }
-
-    /**
-     * 停止广播失败
-     *
-     * @param errorCode 错误码:-1代表获取蓝牙对象为null
-     */
-    default void onStopAdFailure(int adId, int errorCode) {
-    }
-
-    /**
-     * 外围设备连接成功
-     */
-    default void onAdConnectionSuccess(String mac) {
-    }
-
-    /**
-     * 连接断开,在UI线程
-     */
-    default void onAdDisConnected(String mac, int code) {
-    }
+    default void onStartScan() {}
+    /** 返回 false：本监听器收不到该设备的 onScanBleInfo */
+    default boolean onBleFilter(BleBroadcastBean bleBroadcastBean) { return true; }
+    default void onScanBleInfo(BleBroadcastBean bleBroadcastBean) {}
+    default void onScanComplete() {}           // 仅设置了扫描超时时回调
+    default void onScanErr(long time) {}       // time ms 后可再扫
 }
 ```
 
+每个扫描监听器**独立过滤**，互不影响。
 
--  发起广播  XBleManager.getInstance().startAdvertiseData(AdBleValueBean adBleValueBean);
+### 扫描 / 连接 / 断开
 
-```
-//例:
-                AdCharacteristic adCharacteristic = AdCharacteristic.newBuilder().setReadStatus(true).setWriteStatus(true).setNotifyStatus(true).build("uuid");
-                AdGattService adGattService = AdGattService.newBuilder().addAdCharacteristic(adCharacteristic).build("uuid");
-//                AdBleValueBean adBleValueBean = AdBleValueBean.parseAdBytes(new byte[]{});//通过广播数据生成广播对象
-                AdBleValueBean adBleValueBean = AdBleValueBean.newBuilder().addGattService(adGattService)//只做广播可免除
-//                        .setConnectable(false)//是否可连接,默认可连接
-                        .addAdServiceUuid("uuid").setTimeoutMillis(0)//一直广播
-                        .setIncludeTxPowerLevel(false)//不广播功耗
-                        .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY)//低延迟
-                        .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_ULTRA_LOW)//发射功率极低
-                        .addManufacturerData(Integer.parseInt(dataId, 16), bytes).build();
-                XBleManager.getInstance().setOnBleAdvertiserConnectListener(this);//设置广播的监听
-                int adId = XBleManager.getInstance().startAdvertiseData(adBleValueBean);
+```java
+// timeOut：毫秒；0 = 持续扫描（库内会定期重启，避免长时间搜索无回调）
+XBleManager.getInstance().startScan(30000);
+XBleManager.getInstance().startScan(30000, serviceUuid); // UUID 过滤
+XBleManager.getInstance().stopScan();
 
+// 连接前建议 stopScan()
+XBleManager.getInstance().connectDevice(mac);
+XBleManager.getInstance().connectDevice(bleBroadcastBean);
 
-```
-
--  XBleManager.getInstance().stopAdvertiseData(int id);停止广播,-1代表停止所有,
-
-
-
-> 注:中央设备连接成功后,要触发读写norify之后才会回调onAdConnectionSuccess(String mac)接口
-
-
--  获取连接的中央设备对象,在onAdConnectionSuccess接口中获取
-
+XBleManager.getInstance().disconnectAll();
+BleDevice device = XBleManager.getInstance().getBleDevice(mac);
+if (device != null) {
+    device.disconnect();
+}
 ```
 
-AdBleDevice bleDevice = XBleManager.getInstance().getAdBleDevice(mac);
-AdBleDevice对象拥有对此设备的所有操作,包括断开连接,发送指令,接收指令等操作
-AdBleDevice.disconnect();//断开当前设备的连接
-AdBleDevice.sendData(SendDataBean sendDataBean)//发送指令,内容需要用SendDataBean装载
+在 `onServicesDiscovered(mac)` 之后再取 `BleDevice` 读写：
 
+```java
+@Override
+public void onServicesDiscovered(String mac) {
+    BleDevice device = XBleManager.getInstance().getBleDevice(mac);
+    if (device == null) return;
 
-    /**
-     * @param hex         发送的内容
-     * @param uuid        需要操作的特征uuid
-     * @param type        操作类型(1=读,2=写,3=信号强度) {@link BleConfig}
-     * @param uuidService 服务uuid
-     */
-    public SendDataBean(byte[] hex, UUID uuid, int type, UUID uuidService) {
-        this.hex = hex;
-        this.uuid = uuid;
-        this.type = type;
-        if (uuidService != null)
-            this.uuidService = uuidService;
- }
-
-由于发送数据存在发送队列,SendDataBean对象不建议复用,避免数据给覆盖;
-
-
+    device.setSendDataInterval(200);
+    device.setNotifyAll(); // 或 setNotify(serviceUuid, notifyUuid...)
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+        device.setMtu(100);
+        device.setConnectPriority(BluetoothGatt.CONNECTION_PRIORITY_HIGH);
+    }
+    device.setOnNotifyDataListener((characteristic, data) -> {
+        // Notify 数据
+    });
+}
 ```
 
+### 系统已连接设备
 
+通过配置开启，无需旧的 `deviceConnectListener` API：
 
+```java
+XBleManager.getXBleConfig()
+        .setAutoConnectSystemBle(true)           // 初始化后尝试接管系统已连接设备
+        .setAutoMonitorSystemConnectBle(true); // 监听系统后续连接并回调
+```
 
+### 前台服务
 
-- AdBleDevice中的getBluetoothDevice();可以拿到当前连接的BluetoothDevice
-- AdBleDevice中的getBluetoothGattServer();可以拿到当前连接的BluetoothGattServer
-- AdBleDevice的getMac();可以拿到当前连接的mac地址
-- AdBleDevice的getName();可以拿到当前连接的设备名称
+```java
+XBleManager.getInstance().initForegroundService(id, iconRes, title, MainActivity.class);
+XBleManager.getInstance().startForegroundService();
+XBleManager.getInstance().stopForegroundService();
+```
 
+---
 
+## BleDevice 发送与常用 API
 
+`SendDataBean`（**不要复用**同一实例反复入队）：
+
+```java
+new SendDataBean(
+    hex,                 // 内容
+    characteristicUuid,  // 特征 UUID
+    XBleStaticConfig.WRITE_DATA, // 或 READ_DATA / RSSI_DATA 等
+    serviceUuid
+);
+```
+
+| 常量 (`XBleStaticConfig`) | 含义 |
+|---------------------------|------|
+| `WRITE_DATA` | 写 |
+| `READ_DATA` | 读 |
+| `RSSI_DATA` | 读 RSSI（也可用 `readRssi()`） |
+| `NOTICE_DATA` | Notify 开关（一般用 `setNotify`） |
+| `MTU_DATA` | MTU（也可用 `setMtu`） |
+
+### sendData vs sendDataNow
+
+| API | 行为 |
+|-----|------|
+| `sendData(bean)` | 普通队列；写回调后再等 `setSendDataInterval`（默认 200ms）发下一条，避免外设处理不过来 |
+| `sendDataNow(bean)` | 实时队列（默认优先）；仍等 `onCharacteristicWrite` 保证 GATT 串行，但回调后**立即**发下一条 |
+
+有响应写 / 无响应写都会等待 Android 的 `onCharacteristicWrite` 再调度下一条。
+
+```java
+device.setSendDataInterval(200);   // 仅作用于 sendData
+device.setSendNotifyInterval(50);  // Notify 连续设置间隔，最小 20
+device.setResend(true, 3);         // 可选失败重发
+device.sendData(bean);
+device.sendDataNow(urgentBean);
+```
+
+其他常用：
+
+```java
+device.setNotify(serviceUuid, notifyUuid1, notifyUuid2);
+device.setCloseNotify(serviceUuid, notifyUuid);
+device.setOnCharacteristicListener(...); // OnBleCharacteristicListener
+device.setOnBleRssiListener(...);
+device.setOnBleMtuListener(...);         // 回调值为 mtu-3（约等于有效载荷）
+device.getMac();
+device.getName();
+device.getBluetoothGatt();
+```
+
+队列优先级（主线程串行）：**控制(MTU/RSSI) > Notify > 写（实时/普通）**。
+
+---
+
+## 手机作为外围设备（Android 5.0+）
+
+```java
+XBleManager.getInstance().setOnBleAdvertiserConnectListener(this);
+XBleManager.getInstance().startAdvertiseData(adBleBroadcastBean);
+XBleManager.getInstance().stopAdvertiseData();
+
+AdBleDevice ad = XBleManager.getInstance().getAdBleDevice(mac);
+```
+
+组装示例（类名以源码为准：`AdBleBroadcastBean`）：
+
+```java
+AdCharacteristic c1 = AdCharacteristic.newBuilder()
+        .setReadStatus(true).setWriteStatus(true).setNotifyStatus(false)
+        .build(UUID_WRITE);
+AdCharacteristic c2 = AdCharacteristic.newBuilder()
+        .setNotifyStatus(true)
+        .build(UUID_NOTIFY);
+AdGattService service = AdGattService.newBuilder()
+        .addAdCharacteristic(c1).addAdCharacteristic(c2)
+        .build(UUID_SERVER);
+
+AdBleBroadcastBean ad = AdBleBroadcastBean.newBuilder()
+        .addGattService(service)
+        .addAdServiceUuid(UUID_SERVER_BROADCAST)
+        .setTimeoutMillis(0)
+        .setIncludeTxPowerLevel(false)
+        .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY)
+        .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_HIGH)
+        .addManufacturerData(manufacturerId, manufacturerBytes)
+        .build();
+
+XBleManager.getInstance().setOnBleAdvertiserConnectListener(this);
+XBleManager.getInstance().startAdvertiseData(ad);
+```
+
+`OnBleAdvertiserConnectListener` 主要回调：`onStartAdSuccess` / `onStartAdFailure` / `onAdConnectionSuccess` / `onAdDisConnected` 等（无 `adId` 参数）。
+
+> 中央连上外围后，通常需发生读写 / Notify 交互后才会走到 `onAdConnectionSuccess`。
+
+完整示例：`PhonePeripheralActivity`、`PhoneCentralActivity`。
+
+---
+
+## 注意事项
+
+1. 先等 `onServicesDiscovered`，再 `getBleDevice` 发数据。  
+2. 监听用 `add` + `onDestroy` 里 `remove`；弱引用不能替代注销。  
+3. 扫描过频会 `onScanErr`，需等待提示毫秒数后再扫。  
+4. 连接数受系统与 `setConnectMax` 共同限制。  
+5. 不要复用同一个 `SendDataBean` 入队。  
+6. `clear()` 会释放单例与服务，之后需重新 `init`。
+
+## 示例工程
+
+| 类 | 说明 |
+|----|------|
+| `MainActivity` | 初始化与入口 |
+| `PhoneCentralActivity` | 中央扫描 / 连接 / 发送 |
+| `PhonePeripheralActivity` | 外围广播 / 收发 |

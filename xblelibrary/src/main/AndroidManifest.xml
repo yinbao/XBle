@@ -11,8 +11,15 @@
     <!--定位权限-->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <!--  声明前台服务连接设备的权限  -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
+    <!-- android 13 通知栏需要申请权限-->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!--     android:foregroundServiceType="connectedDevice"声明前台服务连接设备的类型   -->
     <application>
-        <service android:name=".server.XBleServer"/>
+        <service android:name=".server.XBleServer"
+            android:foregroundServiceType="connectedDevice" />
 
     </application>
 </manifest>

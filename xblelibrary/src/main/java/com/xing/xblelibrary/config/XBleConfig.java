@@ -46,19 +46,21 @@ public class XBleConfig {
     }
 
     /**
-     * 设置最大连接数据,系统最大支持,包含其他APP连接的BLE数量
+     * 设置最大连接数据,系统最大支持,包含其他APP连接的BLE数量。
+     * 先写入配置；若 XBleServer 已就绪则立即同步。
      *
      * @param connectMax 最大连接数(1~7),默认值为:7
      */
     public XBleConfig setConnectMax(int connectMax) {
-        if (connectMax > 7){
+        if (connectMax > 7) {
             XBleL.e("设置的连接数已超过系统限制,自动修改为最大值:7");
             connectMax = 7;
         }
-        if (connectMax <= 0)
+        if (connectMax <= 0) {
             connectMax = 1;
+        }
         this.mConnectMax = connectMax;
-        XBleManager.getInstance().setConnectMax(connectMax);
+        XBleManager.getInstance().syncConnectMaxToServer();
         return this;
     }
 

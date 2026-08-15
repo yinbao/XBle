@@ -18,12 +18,19 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ListView;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+
 import com.xing.xblelibrary.XBleManager;
 import com.xing.xblelibrary.bean.BleBroadcastBean;
 import com.xing.xblelibrary.config.XBleStaticConfig;
 import com.xing.xblelibrary.device.BleDevice;
 import com.xing.xblelibrary.device.SendDataBean;
 import com.xing.xblelibrary.listener.OnBleConnectListener;
+import com.xing.xblelibrary.listener.OnBleMtuListener;
 import com.xing.xblelibrary.listener.OnBleNotifyDataListener;
 import com.xing.xblelibrary.listener.OnBleScanFilterListener;
 import com.xing.xblelibrary.utils.XBleL;
@@ -32,18 +39,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
-
 /**
  * xing<br>
  * 2021/8/2<br>
  * 手机作为中央设备
  */
-public class PhoneCentralActivity extends AppCompatActivity implements View.OnClickListener, OnBleConnectListener , OnBleScanFilterListener {
+public class PhoneCentralActivity extends AppCompatActivity implements View.OnClickListener, OnBleConnectListener , OnBleScanFilterListener, OnBleMtuListener {
 
 
     private final int REFRESH_BLE = 1;
@@ -139,19 +140,26 @@ public class PhoneCentralActivity extends AppCompatActivity implements View.OnCl
             mHandler.sendEmptyMessage(REFRESH_DATA);
         } else if (id == R.id.btn_disconnect) {
             XBleManager.getInstance().disconnectAll();
-        }else if (id == R.id.btn_send_data) {
-             String data = et_send_data.getText().toString().trim();
-             byte[] bytes=new byte[data.length()>>1];
-             int j=0;
-             for (int i=0;i<data.length();i+=2){
-                 bytes[j]= (byte) Integer.parseInt(data.substring(i,i+2),16);
-                 j++;
-             }
-             if (mBleDevice!=null&&mWriteUuid!=null&&mServiceUuid!=null){
-                 mBleDevice.sendData(new SendDataBean(bytes, UUID.fromString(mWriteUuid), XBleStaticConfig.WRITE_DATA,UUID.fromString(mServiceUuid)));
-             }
-
-         }
+        } else if (id == R.id.btn_send_data) {
+            String data = et_send_data.getText().toString().trim();
+            if (TextUtils.isEmpty(data)) {
+                return;
+            }
+            byte[] bytes;
+            try {
+                bytes = BleStrUtils.hexStr2Bytes(data);
+            } catch (NumberFormatException e) {
+                mListData.add(0, TimeUtils.getCurrentTimeStr() + "发送数据格式错误,请输入十六进制");
+                mHandler.sendEmptyMessage(REFRESH_DATA);
+                return;
+            }
+            if (bytes.length == 0) {
+                return;
+            }
+            if (mBleDevice != null && mWriteUuid != null && mServiceUuid != null) {
+                mBleDevice.sendData(new SendDataBean(bytes, UUID.fromString(mWriteUuid), XBleStaticConfig.WRITE_DATA, UUID.fromString(mServiceUuid)));
+            }
+        }
     }
 
     private void initData() {
@@ -162,8 +170,8 @@ public class PhoneCentralActivity extends AppCompatActivity implements View.OnCl
         mListData = new ArrayList<>();
         mListAdapterData = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, mListData);
         mListViewData.setAdapter(mListAdapterData);
-        XBleManager.getInstance().setOnBleConnectListener(this);
-        XBleManager.getInstance().setOnScanFilterListener(this);
+        XBleManager.getInstance().addBleConnectListener(this);
+        XBleManager.getInstance().addBleScanFilterListener(this);
 
     }
 
@@ -246,7 +254,7 @@ public class PhoneCentralActivity extends AppCompatActivity implements View.OnCl
      * 权限ok
      */
     protected void onPermissionsOk() {
-        XBleManager.getInstance().setOnScanFilterListener(this);//设置监听
+        XBleManager.getInstance().addBleScanFilterListener(this);//设置监听
         XBleManager.getInstance().startScan(1000);//开始搜索
     }
 
@@ -339,13 +347,14 @@ public class PhoneCentralActivity extends AppCompatActivity implements View.OnCl
         mHandler.sendEmptyMessage(REFRESH_DATA);
         mBleDevice = XBleManager.getInstance().getBleDevice(mac);
         if (mBleDevice != null) {
+            mBleDevice.setOnBleMtuListener(this);
             mBleDevice.setSendDataInterval(100);//修改发送队列间隔,默认是200ms
             mBleDevice.setNotifyAll();//开启所有的notify
 //            bleDevice.setNotify(serverUUID,notifyUUID1,notifyUUID2);//设置通知
 //            bleDevice.sendDataNow(new SendDataBean());实时发送内容
 //            bleDevice.sendData(new SendDataBean());使用队列发送内容
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                mBleDevice.setMtu(100);//设置吞吐量,23~517,需要ble设备支持
+                mBleDevice.setMtu(517);//设置吞吐量,23~517,需要ble设备支持
 //                {@link BluetoothGatt#CONNECTION_PRIORITY_BALANCED}默认
 //                {@link BluetoothGatt#CONNECTION_PRIORITY_HIGH}高功率,提高传输速度
 //                {@link BluetoothGatt#CONNECTION_PRIORITY_LOW_POWER}低功率,传输速度减慢,更省电
@@ -384,4 +393,15 @@ public class PhoneCentralActivity extends AppCompatActivity implements View.OnCl
     }
 
 
+    @Override
+    public void OnMtu(int mtu) {
+        XBleL.i("MTU:" + mtu);
+    }
+
+    @Override
+    protected void onDestroy() {
+        XBleManager.getInstance().removeBleConnectListener(this);
+        XBleManager.getInstance().removeBleScanFilterListener(this);
+        super.onDestroy();
+    }
 }

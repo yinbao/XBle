@@ -5,13 +5,8 @@ import android.bluetooth.BluetoothDevice;
 import java.util.List;
 
 /**
- * 功能描述:  Ble连接状态的实现类
- * 1,连接断开
- * 2,连接成功
- * 3,正在连接
- * 4,蓝牙关闭
+ * Ble 连接状态的多观察者分发（弱引用，由 BaseListenerIm 持有）。
  */
-
 public class BleConnectListenerIm extends BaseListenerIm<OnBleBaseListener> {
 
     private static class SingletonHolder {
@@ -25,13 +20,10 @@ public class BleConnectListenerIm extends BaseListenerIm<OnBleBaseListener> {
     /**
      * 连接断开
      */
-    public void onDisConnected(OnBleBaseListener callback, String mac, int code) {
-        synchronized (OnBleBaseListener.class) {
-            for (OnBleBaseListener observer : listListener) {
-                if (observer != null && observer != callback)
-                    if (observer instanceof OnBleConnectListener) {
-                        ((OnBleConnectListener) observer).onDisConnected(mac,code);
-                    }
+    public void onDisConnected(String mac, int code) {
+        for (OnBleBaseListener observer : getAliveListeners()) {
+            if (observer instanceof OnBleConnectListener) {
+                ((OnBleConnectListener) observer).onDisConnected(mac, code);
             }
         }
     }
@@ -39,13 +31,10 @@ public class BleConnectListenerIm extends BaseListenerIm<OnBleBaseListener> {
     /**
      * 连接成功(还未发现服务)
      */
-    public void onConnectionSuccess(OnBleBaseListener callback, String mac) {
-        synchronized (OnBleBaseListener.class) {
-            for (OnBleBaseListener observer : listListener) {
-                if (observer != null && observer != callback)
-                    if (observer instanceof OnBleConnectListener) {
-                        ((OnBleConnectListener) observer).onConnectionSuccess(mac);
-                    }
+    public void onConnectionSuccess(String mac) {
+        for (OnBleBaseListener observer : getAliveListeners()) {
+            if (observer instanceof OnBleConnectListener) {
+                ((OnBleConnectListener) observer).onConnectionSuccess(mac);
             }
         }
     }
@@ -53,13 +42,10 @@ public class BleConnectListenerIm extends BaseListenerIm<OnBleBaseListener> {
     /**
      * 连接成功(发现服务)
      */
-    public void onServicesDiscovered(OnBleBaseListener callback, String mac) {
-        synchronized (OnBleBaseListener.class) {
-            for (OnBleBaseListener observer : listListener) {
-                if (observer != null && observer != callback)
-                    if (observer instanceof OnBleConnectListener) {
-                        ((OnBleConnectListener) observer).onServicesDiscovered(mac);
-                    }
+    public void onServicesDiscovered(String mac) {
+        for (OnBleBaseListener observer : getAliveListeners()) {
+            if (observer instanceof OnBleConnectListener) {
+                ((OnBleConnectListener) observer).onServicesDiscovered(mac);
             }
         }
     }
@@ -67,28 +53,21 @@ public class BleConnectListenerIm extends BaseListenerIm<OnBleBaseListener> {
     /**
      * 正在连接
      */
-    public void onConnecting(OnBleBaseListener callback, String mac) {
-        synchronized (OnBleBaseListener.class) {
-            for (OnBleBaseListener observer : listListener) {
-                if (observer != null && observer != callback)
-                    if (observer instanceof OnBleConnectListener) {
-                        ((OnBleConnectListener) observer).onConnecting(mac);
-                    }
-
+    public void onConnecting(String mac) {
+        for (OnBleBaseListener observer : getAliveListeners()) {
+            if (observer instanceof OnBleConnectListener) {
+                ((OnBleConnectListener) observer).onConnecting(mac);
             }
         }
     }
+
     /**
      * 连接错误,已达系统连接数量上限
      */
-    public void onConnectMaxErr(OnBleBaseListener callback, List<BluetoothDevice> list) {
-        synchronized (OnBleBaseListener.class) {
-            for (OnBleBaseListener observer : listListener) {
-                if (observer != null && observer != callback)
-                    if (observer instanceof OnBleConnectListener) {
-                        ((OnBleConnectListener) observer).onConnectMaxErr(list);
-                    }
-
+    public void onConnectMaxErr(List<BluetoothDevice> list) {
+        for (OnBleBaseListener observer : getAliveListeners()) {
+            if (observer instanceof OnBleConnectListener) {
+                ((OnBleConnectListener) observer).onConnectMaxErr(list);
             }
         }
     }
@@ -96,13 +75,10 @@ public class BleConnectListenerIm extends BaseListenerIm<OnBleBaseListener> {
     /**
      * 未开启蓝牙
      */
-    public void bleClose(OnBleBaseListener callback) {
-        synchronized (OnBleBaseListener.class) {
-            for (OnBleBaseListener observer : listListener) {
-                if (observer != null && observer != callback)
-                    if (observer instanceof OnBleStatusListener) {
-                        ((OnBleStatusListener) observer).bleClose();
-                    }
+    public void bleClose() {
+        for (OnBleBaseListener observer : getAliveListeners()) {
+            if (observer instanceof OnBleStatusListener) {
+                ((OnBleStatusListener) observer).bleClose();
             }
         }
     }
@@ -110,15 +86,11 @@ public class BleConnectListenerIm extends BaseListenerIm<OnBleBaseListener> {
     /**
      * 已开启蓝牙
      */
-    public void bleOpen(OnBleBaseListener callback) {
-        synchronized (OnBleBaseListener.class) {
-            for (OnBleBaseListener observer : listListener) {
-                if (observer != null && observer != callback)
-                    if (observer instanceof OnBleStatusListener) {
-                        ((OnBleStatusListener) observer).bleOpen();
-                    }
+    public void bleOpen() {
+        for (OnBleBaseListener observer : getAliveListeners()) {
+            if (observer instanceof OnBleStatusListener) {
+                ((OnBleStatusListener) observer).bleOpen();
             }
         }
     }
-
 }

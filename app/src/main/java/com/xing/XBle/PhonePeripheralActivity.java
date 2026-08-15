@@ -7,6 +7,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.text.TextUtils;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
@@ -116,11 +117,13 @@ public class PhonePeripheralActivity extends AppCompatActivity implements View.O
                 String adUUID = et_ad_uuid.getText().toString().trim();
                 String dataId = et_ad_data_id.getText().toString().trim();
                 String data = et_ad_data.getText().toString().trim();
-                byte[] bytes = new byte[data.length() >> 1];
-                int j = 0;
-                for (int i = 0; i < data.length(); i += 2) {
-                    bytes[j] = (byte) Integer.parseInt(data.substring(i, i + 2), 16);
-                    j++;
+                byte[] bytes;
+                try {
+                    bytes = BleStrUtils.hexStr2Bytes(data);
+                } catch (NumberFormatException e) {
+                    mListData.add(0, TimeUtils.getCurrentTimeStr() + "广播数据格式错误,请输入十六进制");
+                    mHandler.sendEmptyMessage(REFRESH_DATA);
+                    return;
                 }
                 AdCharacteristic adCharacteristic1 = AdCharacteristic.newBuilder().setReadStatus(true).setWriteStatus(true).setNotifyStatus(false).build(UUID_WRITE);
                 AdCharacteristic adCharacteristic2 = AdCharacteristic.newBuilder().setReadStatus(false).setWriteStatus(false).setNotifyStatus(true).build(UUID_NOTIFY);
@@ -146,11 +149,19 @@ public class PhonePeripheralActivity extends AppCompatActivity implements View.O
             }
         } else if (id == R.id.btn_send_data) {//发送数据
             String data = et_send_data.getText().toString().trim();
-            byte[] bytes = new byte[data.length() >> 1];
-            int j = 0;
-            for (int i = 0; i < data.length(); i += 2) {
-                bytes[j] = (byte) Integer.parseInt(data.substring(i, i + 2), 16);
-                j++;
+            if (TextUtils.isEmpty(data)) {
+                return;
+            }
+            byte[] bytes;
+            try {
+                bytes = BleStrUtils.hexStr2Bytes(data);
+            } catch (NumberFormatException e) {
+                mListData.add(0, TimeUtils.getCurrentTimeStr() + "发送数据格式错误,请输入十六进制");
+                mHandler.sendEmptyMessage(REFRESH_DATA);
+                return;
+            }
+            if (bytes.length == 0) {
+                return;
             }
             byte[] bytes1 = sendMcuDataFormat(bytes);
             if (mAdBleDevice != null) {

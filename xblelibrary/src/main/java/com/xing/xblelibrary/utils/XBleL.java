@@ -3,7 +3,6 @@ package com.xing.xblelibrary.utils;
 import android.text.TextUtils;
 import android.util.Log;
 
-import com.xing.xblelibrary.BuildConfig;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -17,7 +16,7 @@ public class XBleL {
     /**
      * 是否开启log日志
      */
-    private static boolean isLog = BuildConfig.DEBUG;
+    private static boolean isLog = false;
     private static String TAG = "XBle";
 
 
@@ -36,7 +35,7 @@ public class XBleL {
      */
     public static void v(String tag, String msg) {
         if (isLog) {
-            logContent(tag,msg, 4);
+            logContent(tag, msg, 4);
         }
     }
 
@@ -49,7 +48,7 @@ public class XBleL {
      */
     public static void e(String tag, String msg) {
         if (isLog) {
-            logContent(tag,msg, 1);
+            logContent(tag, msg, 1);
         }
     }
 
@@ -63,7 +62,7 @@ public class XBleL {
      */
     public static void w(String tag, String msg) {
         if (isLog) {
-            logContent(tag,msg, 3);
+            logContent(tag, msg, 3);
         }
     }
 
@@ -76,10 +75,9 @@ public class XBleL {
      */
     public static void i(String tag, String msg) {
         if (isLog) {
-            logContent(tag,msg, 0);
+            logContent(tag, msg, 0);
         }
     }
-
 
 
     public static void i(String msg) {
@@ -91,14 +89,13 @@ public class XBleL {
      */
     public static void d(String tag, String msg) {
         if (isLog) {
-            logContent(tag,msg, 2);
+            logContent(tag, msg, 2);
         }
     }
 
     public static void d(String msg) {
         d(TAG, msg);
     }
-
 
 
     /**
