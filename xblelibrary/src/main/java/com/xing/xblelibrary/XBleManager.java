@@ -1,7 +1,6 @@
 package com.xing.xblelibrary;
 
 import android.bluetooth.BluetoothAdapter;
-import android.bluetooth.BluetoothDevice;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -9,55 +8,53 @@ import android.content.ServiceConnection;
 import android.os.Build;
 import android.os.IBinder;
 
+import androidx.annotation.DrawableRes;
+import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
+
 import com.xing.xblelibrary.bean.AdBleBroadcastBean;
 import com.xing.xblelibrary.bean.BleBroadcastBean;
 import com.xing.xblelibrary.config.XBleConfig;
 import com.xing.xblelibrary.device.AdBleDevice;
 import com.xing.xblelibrary.device.BleDevice;
 import com.xing.xblelibrary.listener.BleConnectListenerIm;
+import com.xing.xblelibrary.listener.BleScanFilterListenerIm;
 import com.xing.xblelibrary.listener.OnBleAdvertiserConnectListener;
 import com.xing.xblelibrary.listener.OnBleConnectListener;
 import com.xing.xblelibrary.listener.OnBleScanFilterListener;
 import com.xing.xblelibrary.listener.OnBleStatusListener;
 import com.xing.xblelibrary.server.XBleServer;
-import com.xing.xblelibrary.utils.UuidUtils;
+import com.xing.xblelibrary.utils.XBleL;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-import androidx.annotation.DrawableRes;
-import androidx.annotation.Nullable;
-import androidx.annotation.RequiresApi;
-
 /**
  * xing<br>
  * 2021/7/17<br>
- * Ble管理对象
+ * Ble 管理单例：负责绑定 {@link XBleServer}，并向业务暴露统一 API。
  */
 public class XBleManager {
 
     private Context mContext;
     protected XBleServer mXBleServer;
-    /**
-     * 服务Intent
-     */
     private Intent bindIntent;
     private onInitListener mOnInitListener;
-    private static XBleConfig mXBleConfig = XBleConfig.getInstance();
-    private static XBleManager sXBleManager;
+    private boolean mServiceBinding;
+    private final List<Runnable> mPendingActions = new ArrayList<>();
+    private WeakReference<OnBleStatusListener> mPendingStatusListenerRef;
+    private WeakReference<OnBleAdvertiserConnectListener> mAdvertiserListenerRef;
 
-    /**
-     * 获取配置对象，可进行相关配置的修改
-     *
-     * @return XBleConfig
-     */
+    private static final XBleConfig mXBleConfig = XBleConfig.getInstance();
+    private static volatile XBleManager sXBleManager;
+
     public static XBleConfig getXBleConfig() {
         return mXBleConfig;
     }
 
-    public static synchronized XBleManager getInstance() {
+    public static XBleManager getInstance() {
         if (sXBleManager == null) {
             synchronized (XBleManager.class) {
                 if (sXBleManager == null) {
@@ -68,42 +65,87 @@ public class XBleManager {
         return sXBleManager;
     }
 
+    private XBleManager() {
+    }
+
     public void init(Context context) {
         init(context, null);
     }
 
-    public void init(Context context, onInitListener listener) {
-        mContext = context;
-        setOnInitListener(listener);
+    /**
+     * 初始化并绑定 {@link XBleServer}（幂等）。始终使用 Application Context。
+     */
+    public synchronized void init(Context context, onInitListener listener) {
+        if (context == null) {
+            throw new IllegalArgumentException("context 不能为空");
+        }
+        mContext = context.getApplicationContext();
+        mOnInitListener = listener;
+
+        if (mXBleServer != null) {
+            applyConfigToServer();
+            if (mOnInitListener != null) {
+                mOnInitListener.onInitSuccess();
+            }
+            return;
+        }
         startService();
     }
 
     /**
-     * 清空释放内存
+     * 服务是否已就绪（可执行扫描/连接等操作）
      */
-    public void clear() {
+    public boolean isReady() {
+        return mXBleServer != null;
+    }
+
+    /**
+     * 是否已调用过 init
+     */
+    public boolean isInitialized() {
+        return mContext != null;
+    }
+
+    /**
+     * 清空释放：停扫、断开、清监听、解绑并销毁服务
+     */
+    public synchronized void clear() {
+        clearPendingActions();
+        mPendingStatusListenerRef = null;
+        mAdvertiserListenerRef = null;
+        mOnInitListener = null;
+
+        if (mXBleServer != null) {
+            try {
+                mXBleServer.stopScan();
+                mXBleServer.disconnectAll();
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    mXBleServer.stopAdvertiseData();
+                }
+            } catch (Exception e) {
+                XBleL.e("clear 释放业务资源异常:" + e.getMessage());
+            }
+            try {
+                mXBleServer.finish();
+            } catch (Exception e) {
+                XBleL.e("clear finish 异常:" + e.getMessage());
+            }
+            mXBleServer = null;
+        }
+
+        BleConnectListenerIm.getInstance().removeListenerAll();
+        BleScanFilterListenerIm.getInstance().removeListenerAll();
+
         unbindService();
         mContext = null;
         sXBleManager = null;
-        mOnInitListener = null;
-        if (mXBleServer != null) {
-            mXBleServer.finish();
-        }
-        mXBleServer = null;
-    }
-
-    private XBleManager() {
-
     }
 
     public void setOnInitListener(onInitListener onInitListener) {
         mOnInitListener = onInitListener;
-        if (mXBleServer != null) {
-            if (mOnInitListener != null) {
-                mOnInitListener.onInitSuccess();
-            }
+        if (mXBleServer != null && mOnInitListener != null) {
+            mOnInitListener.onInitSuccess();
         }
-
     }
 
     public interface onInitListener {
@@ -114,94 +156,135 @@ public class XBleManager {
     }
 
     private void startService() {
+        if (mContext == null) {
+            return;
+        }
         try {
             if (bindIntent == null) {
                 bindIntent = new Intent(mContext, XBleServer.class);
                 mContext.startService(bindIntent);
             }
-            if (mFhrSCon != null)
+            if (!mServiceBinding) {
+                mServiceBinding = true;
                 mContext.bindService(bindIntent, mFhrSCon, Context.BIND_AUTO_CREATE);
+            }
         } catch (Exception e) {
+            mServiceBinding = false;
+            XBleL.e("绑定 XBleServer 失败:" + e.getMessage());
             e.printStackTrace();
+            onServiceErr();
         }
-
     }
 
     private void unbindService() {
         try {
-            if (mFhrSCon != null)
+            if (mContext != null && mServiceBinding) {
                 mContext.unbindService(mFhrSCon);
-            bindIntent = null;
+            }
         } catch (Exception e) {
-            e.printStackTrace();
+            XBleL.e("解绑 XBleServer 失败:" + e.getMessage());
+        } finally {
+            mServiceBinding = false;
+            bindIntent = null;
         }
     }
 
-
-    /**
-     * 服务连接与界面的连接
-     */
-    private ServiceConnection mFhrSCon = new ServiceConnection() {
+    private final ServiceConnection mFhrSCon = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
-            //与服务建立连接
             mXBleServer = ((XBleServer.BluetoothBinder) service).getService();
             onServiceSuccess();
         }
 
         @Override
         public void onServiceDisconnected(ComponentName name) {
-            //与服务断开连接
             mXBleServer = null;
+            mServiceBinding = false;
             onServiceErr();
         }
     };
 
     /**
-     * 检查服务是否启动
+     * 未 init 时抛错；已 init 但未就绪时将任务排队，就绪后执行。
      */
-    private boolean checkBluetoothServiceStatus() {
+    private void runOrQueue(Runnable action) {
         if (mContext == null) {
-            throw new SecurityException("请先调用init()初始化.");
+            throw new IllegalStateException("请先调用 init() 初始化.");
         }
-        if (mXBleServer == null) {
-            throw new SecurityException("请在初始化成功后,onInitListener.onInitSuccess()回调之后再执行其他操作.");
+        synchronized (mPendingActions) {
+            if (mXBleServer != null) {
+                action.run();
+            } else {
+                mPendingActions.add(action);
+            }
         }
-        return true;
     }
 
+    private void drainPendingActions() {
+        List<Runnable> actions;
+        synchronized (mPendingActions) {
+            actions = new ArrayList<>(mPendingActions);
+            mPendingActions.clear();
+        }
+        for (Runnable action : actions) {
+            if (mXBleServer != null) {
+                try {
+                    action.run();
+                } catch (Exception e) {
+                    XBleL.e("执行排队任务失败:" + e.getMessage());
+                }
+            }
+        }
+    }
 
-    /**
-     * 连接服务失败
-     */
+    private void clearPendingActions() {
+        synchronized (mPendingActions) {
+            mPendingActions.clear();
+        }
+    }
+
+    private void applyConfigToServer() {
+        if (mXBleServer == null) {
+            return;
+        }
+        XBleConfig config = XBleConfig.getInstance();
+        mXBleServer.setConnectMax(config.getConnectMax());
+        mXBleServer.setAutoMonitorSystemConnectBle(config.isAutoMonitorSystemConnectBle());
+        if (config.isAutoConnectSystemBle()) {
+            mXBleServer.autoConnectSystemBle();
+        }
+    }
+
+    private void applyPendingListeners() {
+        if (mXBleServer == null) {
+            return;
+        }
+        if (mPendingStatusListenerRef != null) {
+            mXBleServer.setOnBleStatusListener(mPendingStatusListenerRef.get());
+            mPendingStatusListenerRef = null;
+        }
+        OnBleAdvertiserConnectListener advertiserListener = getAdvertiserListener();
+        if (advertiserListener != null) {
+            mXBleServer.setOnBleAdvertiserConnectListener(advertiserListener);
+        }
+    }
+
     private void onServiceErr() {
+        clearPendingActions();
         if (mOnInitListener != null) {
             mOnInitListener.onInitFailure();
         }
     }
 
-    /**
-     * 连接服务成功
-     */
     private void onServiceSuccess() {
+        applyConfigToServer();
+        applyPendingListeners();
+        drainPendingActions();
         if (mOnInitListener != null) {
             mOnInitListener.onInitSuccess();
         }
-        if (mXBleServer != null) {
-            boolean autoConnectSystemBle = XBleConfig.getInstance().isAutoConnectSystemBle();
-            if (autoConnectSystemBle) {
-                mXBleServer.autoConnectSystemBle();
-            }
-            mXBleServer.setAutoMonitorSystemConnectBle(XBleConfig.getInstance().isAutoMonitorSystemConnectBle());
-        }
     }
 
-
-    /**
-     * 获取所有的连接对象
-     *
-     * @return List<BleDevice>
-     */
     public List<BleDevice> getBleDeviceAll() {
         if (mXBleServer != null) {
             return mXBleServer.getBleDeviceAll();
@@ -209,312 +292,159 @@ public class XBleManager {
         return new ArrayList<>();
     }
 
-
-    //--------bleService相关方法---------
-
-
-    /**
-     * 搜索设备
-     *
-     * @param timeOut  超时时间,ms
-     * @param scanUUID 扫描过滤的uuid
-     */
     public void startScan(long timeOut, UUID... scanUUID) {
-        if (checkBluetoothServiceStatus()) {
-            mXBleServer.scanLeDevice(timeOut, scanUUID);
-        }
+        final UUID[] uuids = scanUUID;
+        runOrQueue(() -> mXBleServer.scanLeDevice(timeOut, uuids));
     }
 
-
-    /**
-     * 搜索设备
-     * @param timeOut 超时时间,ms
-     * @param scanStr 扫描过滤的uuidStr
-     */
-    public void startScan(long timeOut, String... scanStr) {
-        if (checkBluetoothServiceStatus()) {
-            UUID[] uuids=new UUID[scanStr.length];
-            for (int i = 0; i < scanStr.length; i++) {
-                uuids[i]=UuidUtils.getUuid(scanStr[i]);
-            }
-            startScan(timeOut, uuids);
-        }
-    }
-
-    /**
-     * 停止搜索
-     */
     public void stopScan() {
-        if (checkBluetoothServiceStatus()) {
-            mXBleServer.stopScan();
-        }
+        runOrQueue(() -> mXBleServer.stopScan());
     }
 
-    /**
-     * 连接设备
-     *
-     * @param bleValueBean BleValueBean
-     */
     public void connectDevice(BleBroadcastBean bleValueBean) {
         connectDevice(bleValueBean.getMac());
     }
 
-
-    /**
-     * 连接设备
-     *
-     * @param bleValueBean BleValueBean
-     * @param transport    {@link BluetoothDevice#TRANSPORT_AUTO} or {@link BluetoothDevice#TRANSPORT_BREDR} or {@link  BluetoothDevice#TRANSPORT_LE}
-     */
-    @RequiresApi(api = Build.VERSION_CODES.M)
-    public void connectDevice(BleBroadcastBean bleValueBean, int transport) {
-        if (checkBluetoothServiceStatus()) {
-            mXBleServer.connectDevice(bleValueBean, transport);
-        }
-    }
-
-    /**
-     * 连接设备
-     *
-     * @param mAddress 设备mac地址
-     */
     public void connectDevice(String mAddress) {
-        if (checkBluetoothServiceStatus()) {
-            mXBleServer.connectDevice(mAddress);
-        }
+        runOrQueue(() -> mXBleServer.connectDevice(mAddress));
     }
 
-    /**
-     * @param mAddress  mac地址
-     * @param transport {@link BluetoothDevice#TRANSPORT_AUTO} or {@link BluetoothDevice#TRANSPORT_BREDR} or {@link  BluetoothDevice#TRANSPORT_LE}
-     */
-    @RequiresApi(api = Build.VERSION_CODES.M)
-    public void connectDevice(String mAddress, int transport) {
-        if (checkBluetoothServiceStatus()) {
-            mXBleServer.connectDevice(mAddress, transport);
-        }
-    }
-
-
-    /**
-     * 断开指定mac地址的蓝牙连接,正在连接中的设备也会断开
-     */
-    public void disconnect(String mac) {
-        if (checkBluetoothServiceStatus()) {
-            mXBleServer.disconnect(mac);
-        }
-    }
-
-    /**
-     * 断开所有蓝牙连接,包含连接中的设备
-     */
     public void disconnectAll() {
-        if (checkBluetoothServiceStatus()) {
-            mXBleServer.disconnectAll();
-        }
+        runOrQueue(() -> mXBleServer.disconnectAll());
     }
 
-
-    /**
-     * 获取连接的设备对象
-     *
-     * @param mac 设备地址
-     * @return BleDevice
-     */
     @Nullable
     public BleDevice getBleDevice(String mac) {
-        if (checkBluetoothServiceStatus()) {
-            return mXBleServer.getBleDevice(mac);
-        }
-        return null;
+        return mXBleServer == null ? null : mXBleServer.getBleDevice(mac);
     }
 
-
-    /**
-     * 获取外围的设备对象
-     *
-     * @param mac 设备地址
-     * @return AdBleDevice
-     */
     @Nullable
     public AdBleDevice getAdBleDevice(String mac) {
-        if (checkBluetoothServiceStatus()) {
-            return mXBleServer.getAdBleDevice(mac);
-        }
-        return null;
+        return mXBleServer == null ? null : mXBleServer.getAdBleDevice(mac);
     }
 
-    /**
-     * 设备BLE连接超时时间(获取服务超时时间,超时后连接错误码返回-1)
-     *
-     * @param connectTimeout 时间ms
-     */
     public void setConnectBleTimeout(long connectTimeout) {
-        if (checkBluetoothServiceStatus()) {
-            mXBleServer.setConnectBleTimeout(connectTimeout);
-        }
+        runOrQueue(() -> mXBleServer.setConnectBleTimeout(connectTimeout));
     }
 
-
-    /**
-     * 设置扫描过滤回调接口
-     *
-     * @param onScanFilterListener OnScanFilterListener
-     */
+    @Deprecated
     public XBleManager setOnScanFilterListener(OnBleScanFilterListener onScanFilterListener) {
-        if (checkBluetoothServiceStatus()) {
-            mXBleServer.setOnBleScanFilterListener(new WeakReference<>(onScanFilterListener).get());
-        }
+        addBleScanFilterListener(onScanFilterListener);
         return this;
     }
 
+    public void addBleScanFilterListener(OnBleScanFilterListener listener) {
+        BleScanFilterListenerIm.getInstance().addListListener(listener);
+    }
 
-    /**
-     * 设置连接的接口
-     *
-     * @param listener OnCallbackBle
-     */
+    public void removeBleScanFilterListener(OnBleScanFilterListener listener) {
+        BleScanFilterListenerIm.getInstance().removeListener(listener);
+    }
+
+    public void removeAllBleScanFilterListener() {
+        BleScanFilterListenerIm.getInstance().removeListenerAll();
+    }
+
+    @Deprecated
     public XBleManager setOnBleConnectListener(OnBleConnectListener listener) {
-        if (checkBluetoothServiceStatus()) {
-            mXBleServer.setOnBleConnectListener(new WeakReference<>(listener).get());
-        }
+        addBleConnectListener(listener);
         return this;
     }
 
-    /**
-     * 设置前台服务相关参数
-     *
-     * @param id            id
-     * @param icon          logo
-     * @param title         标题
-     * @param activityClass 跳转的activity
-     */
     public void initForegroundService(int id, @DrawableRes int icon, String title, Class<?> activityClass) {
-        if (checkBluetoothServiceStatus()) {
-            mXBleServer.initForegroundService(id, icon, title, activityClass);
-        }
+        runOrQueue(() -> mXBleServer.initForegroundService(id, icon, title, activityClass));
     }
 
-    /**
-     * 启动前台服务
-     */
     public void startForegroundService() {
-        if (checkBluetoothServiceStatus()) {
-            mXBleServer.startForeground();
-        }
+        runOrQueue(() -> mXBleServer.startForeground());
     }
 
-    /**
-     * 关闭前台服务
-     */
     public void stopForegroundService() {
-        if (checkBluetoothServiceStatus()) {
-            mXBleServer.stopForeground();
-        }
+        runOrQueue(() -> mXBleServer.stopForeground());
     }
 
-    /**
-     * 获取BluetoothAdapter对象
-     *
-     * @return BluetoothAdapter
-     */
+    @Nullable
     public BluetoothAdapter getBluetoothAdapter() {
-        if (checkBluetoothServiceStatus()) {
-            return mXBleServer.getBluetoothAdapter();
-        }
-        return null;
+        return mXBleServer == null ? null : mXBleServer.getBluetoothAdapter();
     }
 
     /**
-     * 监听蓝牙状态
-     * @param listener 蓝牙状态接口
+     * 监听蓝牙开关状态（弱引用；未就绪时先暂存，就绪后自动设置）
      */
     public void setOnBleStatusListener(OnBleStatusListener listener) {
-        if (checkBluetoothServiceStatus()) {
-            mXBleServer.setOnBleStatusListener(new WeakReference<>(listener).get());
+        if (mContext == null) {
+            throw new IllegalStateException("请先调用 init() 初始化.");
+        }
+        if (mXBleServer != null) {
+            mXBleServer.setOnBleStatusListener(listener);
+            mPendingStatusListenerRef = null;
+        } else {
+            mPendingStatusListenerRef = listener == null ? null : new WeakReference<>(listener);
         }
     }
 
-    /**
-     * 以观察者模式监听蓝牙连接状态
-     *
-     * @param listener OnBleConnectListener
-     */
     public void addBleConnectListener(OnBleConnectListener listener) {
-        BleConnectListenerIm.getInstance().addListListener(new WeakReference<>(listener).get());
+        BleConnectListenerIm.getInstance().addListListener(listener);
     }
 
-    /**
-     * 移除监听蓝牙连接状态
-     *
-     * @param listener OnBleConnectListener
-     */
     public void removeBleConnectListener(OnBleConnectListener listener) {
-        BleConnectListenerIm.getInstance().removeListener(new WeakReference<>(listener).get());
+        BleConnectListenerIm.getInstance().removeListener(listener);
     }
 
-    /**
-     * 清空监听蓝牙连接状态的监听器
-     */
     public void removeAllBleConnectListener() {
         BleConnectListenerIm.getInstance().removeListenerAll();
     }
 
-
     /**
-     * 设置最大连接数,默认值:5
-     * 最大值不能超过7,最小值为1
-     * 超过最大连接数的时候会连接失败,通过接口返回{@link OnBleConnectListener#onConnectMaxErr}
-     * @param connectMax 最大连接数
+     * 设置最大连接数（写入配置；服务就绪后立即生效，未就绪则随 applyConfig 生效）
      */
     public void setConnectMax(int connectMax) {
+        XBleConfig.getInstance().setConnectMax(connectMax);
+    }
+
+    /**
+     * 将配置中的最大连接数同步到已就绪的 Server（未就绪时忽略）
+     */
+    public void syncConnectMaxToServer() {
         if (mXBleServer != null) {
-            if (connectMax > 7) {
-                connectMax = 7;
-            }
-            if (connectMax <= 0)
-                connectMax = 1;
-            mXBleServer.setConnectMax(connectMax);
+            mXBleServer.setConnectMax(XBleConfig.getInstance().getConnectMax());
         }
     }
 
     //----------------广播-------------------
 
-
-    private OnBleAdvertiserConnectListener mOnBleAdvertiserConnectListener;
-
-    public void setOnBleAdvertiserConnectListener(OnBleAdvertiserConnectListener onBleAdvertiserConnectListener) {
-        mOnBleAdvertiserConnectListener = onBleAdvertiserConnectListener;
-        if (checkBluetoothServiceStatus()) {
-            mXBleServer.setOnBleAdvertiserConnectListener(onBleAdvertiserConnectListener);
+    /**
+     * 设置广播相关监听（弱引用持有）
+     */
+    public void setOnBleAdvertiserConnectListener(OnBleAdvertiserConnectListener listener) {
+        if (mContext == null) {
+            throw new IllegalStateException("请先调用 init() 初始化.");
+        }
+        mAdvertiserListenerRef = listener == null ? null : new WeakReference<>(listener);
+        if (mXBleServer != null) {
+            mXBleServer.setOnBleAdvertiserConnectListener(listener);
         }
     }
 
-    /**
-     * 广播
-     *
-     * @param adBleValueBean AdBleValueBean
-     */
+    @Nullable
+    private OnBleAdvertiserConnectListener getAdvertiserListener() {
+        return mAdvertiserListenerRef == null ? null : mAdvertiserListenerRef.get();
+    }
+
     @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
     public void startAdvertiseData(AdBleBroadcastBean adBleValueBean) {
-        if (mOnBleAdvertiserConnectListener != null) {
-            mOnBleAdvertiserConnectListener.onStartAdvertiser();
-        }
-        if (mXBleServer != null) {
-            mXBleServer.startAdvertiseData(adBleValueBean, mOnBleAdvertiserConnectListener);
-        }
+        runOrQueue(() -> {
+            OnBleAdvertiserConnectListener listener = getAdvertiserListener();
+            if (listener != null) {
+                listener.onStartAdvertiser();
+            }
+            mXBleServer.setOnBleAdvertiserConnectListener(listener);
+            mXBleServer.startAdvertiseData(adBleValueBean, listener);
+        });
     }
 
-
-    /**
-     * 关闭广播
-     */
     @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
     public void stopAdvertiseData() {
-        if (mXBleServer != null)
-            mXBleServer.stopAdvertiseData();
-
+        runOrQueue(() -> mXBleServer.stopAdvertiseData());
     }
-
-
 }

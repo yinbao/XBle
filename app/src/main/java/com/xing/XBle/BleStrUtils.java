@@ -31,6 +31,30 @@ public class BleStrUtils {
         return hs.toString();
     }
 
+    /**
+     * 十六进制字符串转 byte[]
+     * 支持空格、逗号分隔；奇数长度时左侧补 0
+     */
+    public static byte[] hexStr2Bytes(String hex) {
+        if (hex == null) {
+            return new byte[0];
+        }
+        String s = hex.trim().replace(" ", "").replace(",", "");
+        if (s.isEmpty()) {
+            return new byte[0];
+        }
+        if ((s.length() & 1) != 0) {
+            s = "0" + s;
+        }
+        int len = s.length() >> 1;
+        byte[] bytes = new byte[len];
+        for (int i = 0; i < len; i++) {
+            int start = i << 1;
+            bytes[i] = (byte) Integer.parseInt(s.substring(start, start + 2), 16);
+        }
+        return bytes;
+    }
+
 
 
     /**

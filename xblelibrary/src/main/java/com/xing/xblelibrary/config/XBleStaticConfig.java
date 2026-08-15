@@ -28,6 +28,10 @@ public class XBleStaticConfig {
      * 通知(notify)
      */
     public static final int NOTICE_DATA = 4;
+    /**
+     * 设置MTU(Set MTU)
+     */
+    public static final int MTU_DATA = 5;
 
     /**
      * 指示(Indication)

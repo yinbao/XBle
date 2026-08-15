@@ -1,5 +1,7 @@
 package com.xing.xblelibrary.listener;
 
+import com.xing.xblelibrary.device.SendDataBean;
+
 import java.util.UUID;
 
 /**
@@ -29,6 +31,17 @@ public interface OnBleSendResultListener {
      * @param result 结果
      */
     default void onWriteResult(UUID uuid, boolean result) {
+    }
+
+    ;
+
+    /**
+     * 写入并且多次重发失败的回调
+     *
+     * @param data        数据
+     * @param reSendCount 重发次数
+     */
+    default void onWriteAndReSendFail(SendDataBean data, int reSendCount) {
     }
 
     ;

@@ -1,15 +1,15 @@
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 30
-    buildToolsVersion "30.0.2"
+    compileSdkVersion 35
+    namespace 'com.xing.XBle'
 
     defaultConfig {
         applicationId "com.xing.XBle"
         minSdkVersion 19
-        targetSdkVersion 30
-        versionCode 2
-        versionName "2.0"
+        targetSdkVersion 35
+        versionCode 4
+        versionName "3.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -21,9 +21,10 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility 1.8
-        targetCompatibility 1.8
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
     }
+
 }
 
 dependencies {

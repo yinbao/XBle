@@ -1,6 +1,8 @@
 package com.xing.xblelibrary.device;
 
 
+import android.bluetooth.BluetoothDevice;
+
 import com.xing.xblelibrary.config.XBleStaticConfig;
 
 import java.util.UUID;
@@ -36,15 +38,14 @@ public class SendDataBean {
      */
     private boolean mTop = false;
     /**
+     * 已重发次数
+     */
+    private int mResendNumber = 0;
+    /**
      * 服务的uuid
      */
     private UUID uuidService = null;
 
-
-    /**
-     * 重发次数
-     */
-    private int mResendNumber=0;
 
 
     /**
@@ -116,6 +117,8 @@ public class SendDataBean {
     }
 
     public void addResendNumber() {
-        mResendNumber+=1;
+        mResendNumber += 1;
     }
+
+
 }
