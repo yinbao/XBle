@@ -1,4 +1,5 @@
 apply plugin: 'com.android.library'
+apply plugin: 'maven-publish'
 
 android {
     compileSdkVersion 35
@@ -25,6 +26,13 @@ android {
         sourceCompatibility JavaVersion.VERSION_11
         targetCompatibility JavaVersion.VERSION_11
     }
+
+    // AGP 8+：声明要发布的 variant，供 maven-publish 使用
+    publishing {
+        singleVariant('release') {
+            withSourcesJar()
+        }
+    }
 }
 
 task clearJar(type: Delete) {
@@ -45,5 +53,20 @@ dependencies {
     testImplementation 'junit:junit:4.12'
     androidTestImplementation 'androidx.test.ext:junit:1.1.2'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.3.0'
+}
 
+// JitPack：./gradlew clean -Pgroup=... -Pversion=... publishToMavenLocal
+afterEvaluate {
+    publishing {
+        publications {
+            release(MavenPublication) {
+                from components.release
+                // JitPack 构建时会传入 -Pgroup / -Pversion
+                groupId = project.findProperty('group') ?: 'com.github.yinbao'
+                // 与 README 中 com.github.yinbao:XBle 一致
+                artifactId = 'XBle'
+                version = project.findProperty('version') ?: android.defaultConfig.versionName
+            }
+        }
+    }
 }

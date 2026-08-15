@@ -1,0 +1,3 @@
+# AGP 8.x 需要 JDK 17（JitPack 默认 Java 8）
+jdk:
+  - openjdk17
