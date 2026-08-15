@@ -41,7 +41,10 @@ import java.util.UUID;
  * </ul>
  * 读写/Notify/控制指令进入 busy 后，等待系统回调或超时再发下一条。
  * WRITE_NO_RESPONSE 同样等待 {@code onCharacteristicWrite}，以保证 Android GATT 串行可靠。
+ * <p>
+ * 调用方须在运行时持有 {@code BLUETOOTH_CONNECT} 等权限；库内不做运行时校验。
  */
+@SuppressLint("MissingPermission")
 public final class BleDevice {
 
     private static final String TAG = BleDevice.class.getSimpleName();

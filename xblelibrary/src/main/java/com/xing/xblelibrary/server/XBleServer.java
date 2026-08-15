@@ -1,6 +1,7 @@
 package com.xing.xblelibrary.server;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -68,10 +69,13 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * xing<br>
- * 2021/07/21<br>
- * 蓝牙服务
+ * 蓝牙后台服务：扫描、连接、GATT 回调、外围广播等。
+ * <p>
+ * 宿主 App 须在运行时申请并持有 {@code BLUETOOTH_SCAN} /
+ * {@code BLUETOOTH_CONNECT} / {@code BLUETOOTH_ADVERTISE}（及定位等）权限；
+ * 本类内部不做权限校验。
  */
+@SuppressLint("MissingPermission")
 public class XBleServer extends Service {
 
     /**

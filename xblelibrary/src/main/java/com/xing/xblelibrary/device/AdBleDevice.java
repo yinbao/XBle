@@ -1,5 +1,6 @@
 package com.xing.xblelibrary.device;
 
+import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCharacteristic;
@@ -23,11 +24,12 @@ import java.util.UUID;
 import androidx.annotation.CallSuper;
 
 /**
- * xing<br>
- * 2021/07/22<br>
  * BLE设备对象
  * 手机作为外围设备(被其他手机或者设备连接生成的对象)
+ * <p>
+ * 调用方须在运行时持有 {@code BLUETOOTH_CONNECT} 等权限；库内不做运行时校验。
  */
+@SuppressLint("MissingPermission")
 public final class AdBleDevice implements OnBleCharacteristicRequestListener {
     protected static String TAG = AdBleDevice.class.getName();
 

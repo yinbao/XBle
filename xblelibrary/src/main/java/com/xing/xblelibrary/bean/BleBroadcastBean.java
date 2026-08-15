@@ -1,5 +1,6 @@
 package com.xing.xblelibrary.bean;
 
+import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.le.ScanRecord;
 import android.bluetooth.le.ScanResult;
@@ -17,9 +18,11 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * 蓝牙广播内容bean<br>
- * 搜索到的外围设备
+ * 蓝牙广播内容 bean：搜索到的外围设备。
+ * <p>
+ * 调用方须在运行时持有 {@code BLUETOOTH_CONNECT} 等权限（如 {@link BluetoothDevice#getName()}）。
  */
+@SuppressLint("MissingPermission")
 public class BleBroadcastBean {
     private static String TAG = BleBroadcastBean.class.getName();
     private BluetoothDevice mDevice;
