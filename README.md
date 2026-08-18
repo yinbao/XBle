@@ -1,3 +1,5 @@
+
+
 # XBle 使用说明
 
 [![](https://jitpack.io/v/yinbao/XBle.svg)](https://jitpack.io/#yinbao/XBle)
@@ -38,6 +40,8 @@ dependencies {
     implementation 'com.github.yinbao:XBle:+'  // 版本号以 JitPack 徽章为准
 }
 ```
+
+> JitPack 构建使用 JDK 17（见 `jitpack.yml`）。
 
 
 ## 权限
