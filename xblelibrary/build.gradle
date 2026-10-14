@@ -40,7 +40,7 @@ task clearJar(type: Delete) {
 }
 
 task makeJar(type: Copy) {
-    from('build/intermediates/aar_main_jar/release/')
+    from('build/intermediates/aar_main_jar/release/syncReleaseLibJars')
     into('build/outputs/jar/')
     include('classes.jar')
     rename('classes.jar', 'XBleLibrary.jar')
