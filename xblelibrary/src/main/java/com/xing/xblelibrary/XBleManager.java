@@ -191,6 +191,16 @@ public class XBleManager {
     }
 
     /**
+     * 系统ble连接监听,发现连接成功后马上判断连接获取操作的对象
+     * 例:开启后其他APP连接了BLE也会触发回调
+     */
+    public void SystemConnectListener(){
+        if (mXBleServer != null) {
+            mXBleServer.deviceAdConnectListener(true);
+        }
+    }
+
+    /**
      * 设置或更换初始化回调。
      * 若服务此时已就绪，会立刻回调 {@link onInitListener#onInitSuccess()}。
      */
